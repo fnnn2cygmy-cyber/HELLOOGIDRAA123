@@ -176,6 +176,7 @@ local predictionStrength = 0.065
 local smoothing = 0.05
 
 local aimbotEnabled = false
+local silentAimEnabled = false
 local wallCheck = true
 local stickyAimEnabled = false
 local teamCheck = false
@@ -220,6 +221,7 @@ local toggles = {
     chams = false,
     highlight = false,
     aimbot = false,
+    silentaim = false,
     fovvisibility = false,
     wallcheck = false,
     stickyaim = false,
@@ -267,7 +269,6 @@ local function toggleFPS(value)
                 frameCount = 0
                 lastTime = currentTime
                 
-                -- Меняем цвет в зависимости от FPS
                 if fps >= 60 then
                     fpsLabel.Color = Color3.fromRGB(0, 255, 0)
                 elseif fps >= 30 then
@@ -397,6 +398,62 @@ local function aimAt(player, part)
         end
     end
 end
+
+-- SILENT AIM ЛОГИКА
+local function getSilentTarget()
+    local nearestPlayer = nil
+    local closestPart = nil
+    local shortestCursorDistance = aimFov
+    
+    for _, player in ipairs(players:GetPlayers()) do
+        if player ~= plr and player.Character and not checkTeam(player) then
+            if player.Character.Humanoid.Health >= minHealth or not healthCheck then
+                local targetPart = getClosestPart(player.Character)
+                if targetPart then
+                    local screenPos = camera:WorldToViewportPoint(targetPart.Position)
+                    local cursorDistance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                    
+                    if cursorDistance < shortestCursorDistance then
+                        if not wallCheck or not checkWall(player.Character) then
+                            shortestCursorDistance = cursorDistance
+                            nearestPlayer = player
+                            closestPart = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestPlayer, closestPart
+end
+
+-- ПЕРЕХВАТ КЛИКА ДЛЯ SILENT AIM
+local function onMouseClick()
+    if not silentAimEnabled then return end
+    
+    local target, targetPart = getSilentTarget()
+    if target and targetPart then
+        local predictedPos = predict(target, targetPart)
+        if predictedPos then
+            -- Меняем направление выстрела
+            local direction = (predictedPos - camera.CFrame.Position).unit
+            local newCFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction * 100)
+            
+            -- Подменяем Hit для мыши
+            local originalHit = mouse.Hit
+            mouse.Hit = newCFrame
+            
+            -- Даём время на выстрел
+            task.wait(0.01)
+            
+            -- Возвращаем обратно
+            mouse.Hit = originalHit
+        end
+    end
+end
+
+mouse.Button1Down:Connect(onMouseClick)
 
 RunService.RenderStepped:Connect(function()
     if aimbotEnabled then
@@ -746,7 +803,6 @@ local function applyChamsToCharacter(character)
     
     local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
     
-    -- Проверяем, есть ли уже выделение игрока (приоритет)
     local hasPlayerHighlight = false
     if highlightEnabled and playerHighlightSettings.SelectedPlayers then
         local playerName = pl and pl.Name or ""
@@ -760,12 +816,10 @@ local function applyChamsToCharacter(character)
     
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
-            -- Если есть выделение игрока — пропускаем CHAMS
             if hasPlayerHighlight and part:GetAttribute("highlighted_player") then
                 continue
             end
             
-            -- Если нет выделения — накладываем CHAMS
             if not part:FindFirstChild("Highlight") and not hasPlayerHighlight then
                 local highlight = Instance.new("Highlight")
                 highlight.Parent = part
@@ -780,12 +834,11 @@ local function applyChamsToCharacter(character)
     end
 end
 
--- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА (С УЧЕТОМ ПРОЗРАЧНОСТИ CHAMS)
+-- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА
 local function applyPlayerHighlightToCharacter(character, color)
     if not character or character == player.Character then return end
     if not highlightEnabled then return end
     
-    -- Сначала очищаем старые выделения
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
             local highlight = part:FindFirstChild("Highlight")
@@ -794,14 +847,13 @@ local function applyPlayerHighlightToCharacter(character, color)
         end
     end
     
-    -- Накладываем новое выделение с прозрачностью от CHAMS
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
             local highlight = Instance.new("Highlight")
             highlight.Parent = part
             highlight.Adornee = part
             highlight.FillColor = color
-            highlight.FillTransparency = chamsSettings.Transparency -- Используем прозрачность CHAMS
+            highlight.FillTransparency = chamsSettings.Transparency
             highlight.OutlineColor = color
             highlight.OutlineTransparency = 0.1
             part:SetAttribute("highlighted_player", true)
@@ -813,7 +865,6 @@ end
 local function updateAllHighlights()
     clearAllHighlights()
     
-    -- Сначала накладываем CHAMS на всех
     if chamsEnabled then
         for _, pl in pairs(game.Players:GetPlayers()) do
             if pl ~= player and pl.Character then
@@ -822,12 +873,10 @@ local function updateAllHighlights()
         end
     end
     
-    -- Затем поверх — выделение выбранных игроков
     if highlightEnabled then
         for _, playerName in ipairs(playerHighlightSettings.SelectedPlayers) do
             local targetPlayer = game.Players:FindFirstChild(playerName)
             if targetPlayer and targetPlayer.Character then
-                -- Удаляем CHAMS с этого игрока
                 for _, part in pairs(targetPlayer.Character:GetDescendants()) do
                     if part:IsA("BasePart") and part:GetAttribute("highlighted") then
                         local highlight = part:FindFirstChild("Highlight")
@@ -835,7 +884,6 @@ local function updateAllHighlights()
                         part:SetAttribute("highlighted", nil)
                     end
                 end
-                -- Накладываем выделение
                 applyPlayerHighlightToCharacter(targetPlayer.Character, playerHighlightSettings.Color)
             end
         end
@@ -906,7 +954,7 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
--- ПРОЗРАЧНОСТЬ CHAMS (ПРИМЕНЯЕТСЯ И К ВЫДЕЛЕННЫМ)
+-- ПРОЗРАЧНОСТЬ CHAMS
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -915,7 +963,6 @@ local transparencySlider = FuncTab:CreateSlider({
     Flag = "chams_transparency",
     Callback = function(value)
         chamsSettings.Transparency = value
-        -- Обновляем все выделения
         if chamsEnabled or highlightEnabled then
             updateAllHighlights()
         end
@@ -992,7 +1039,7 @@ for _, pl in pairs(game.Players:GetPlayers()) do
 end
 
 -- ============================================
--- ОСТАЛЬНОЙ КОД (AIMBOT, ANTI-AIM, SPIN-BOT)
+-- AIMBOT + SILENT AIM
 -- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
@@ -1039,13 +1086,37 @@ local function findPlayerByPartialNameOrNickname(partialName)
 end
 
 local aimbot = FuncTab:CreateToggle({
-    Name = "Aimbot",
+    Name = "Aimbot (камера)",
     CurrentValue = false,
     Flag = "Aimbot",
     Callback = function(Value)
         toggles.aimbot = Value
         aimbotEnabled = Value
         fovCircle.Visible = Value
+    end
+})
+
+-- SILENT AIM ТОГГЛ
+local silentAimToggle = FuncTab:CreateToggle({
+    Name = "Silent Aim (невидимый)",
+    CurrentValue = false,
+    Flag = "SilentAim",
+    Callback = function(Value)
+        toggles.silentaim = Value
+        silentAimEnabled = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "Silent Aim",
+                Content = "Включён! Стреляй в любую сторону",
+                Duration = 2,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Silent Aim",
+                Content = "Выключен",
+                Duration = 2,
+            })
+        end
     end
 })
 
@@ -1788,7 +1859,7 @@ loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
 })
 
 -- ============================================
--- НОВАЯ ВКЛАДКА SETTINGS
+-- ВКЛАДКА SETTINGS
 -- ============================================
 local SettingsTab = Window:CreateTab("Settings", "settings")
 
@@ -1808,15 +1879,12 @@ local fpsToggle = SettingsTab:CreateToggle({
 local disableAllButton = SettingsTab:CreateButton({
     Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
     Callback = function()
-        -- Выключаем все тогглы
         for key, value in pairs(toggles) do
             toggles[key] = false
         end
         
-        -- Отключаем ESP
         Sense.Unload()
         
-        -- Отключаем CHAMS и выделение
         chamsEnabled = false
         highlightEnabled = false
         if chamsConnection then
@@ -1825,20 +1893,17 @@ local disableAllButton = SettingsTab:CreateButton({
         end
         clearAllHighlights()
         
-        -- Отключаем No Clip
         if noclip then
             noclip:Disconnect()
             noclip = nil
         end
         
-        -- Отключаем Aimbot
         aimbotEnabled = false
+        silentAimEnabled = false
         fovCircle.Visible = false
         
-        -- Отключаем Anti-Aim
         antiAim = false
         
-        -- Отключаем Spin-Bot
         if spinBot then
             for i,v in pairs(hrp:GetChildren()) do
                 if v.Name == "Spinning" then
@@ -1849,7 +1914,6 @@ local disableAllButton = SettingsTab:CreateButton({
             spinBot = false
         end
         
-        -- Отключаем Visual эффекты
         game.Lighting.Ambient = ambient
         game.Lighting.OutdoorAmbient = outdoor_ambient
         game.Lighting.FogStart = fogstart
@@ -1857,18 +1921,13 @@ local disableAllButton = SettingsTab:CreateButton({
         game.Lighting.ClockTime = clocktime
         game.Lighting.GlobalShadows = shadows
         
-        -- Отключаем Anti-AFK
         for i,v in pairs(getconnections(player.Idled)) do
             v:Enable()
         end
         
-        -- Отключаем AutoEZ
         autoez = false
-        
-        -- Отключаем FPS счетчик
         toggleFPS(false)
         
-        -- Уведомление
         Rayfield:Notify({
             Title = "❌ Всё отключено!",
             Content = "Все функции были деактивированы",
