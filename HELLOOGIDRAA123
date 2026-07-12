@@ -267,6 +267,7 @@ local function toggleFPS(value)
                 frameCount = 0
                 lastTime = currentTime
                 
+                -- Меняем цвет в зависимости от FPS
                 if fps >= 60 then
                     fpsLabel.Color = Color3.fromRGB(0, 255, 0)
                 elseif fps >= 30 then
@@ -745,6 +746,7 @@ local function applyChamsToCharacter(character)
     
     local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
     
+    -- Проверяем, есть ли уже выделение игрока (приоритет)
     local hasPlayerHighlight = false
     if highlightEnabled and playerHighlightSettings.SelectedPlayers then
         local playerName = pl and pl.Name or ""
@@ -758,10 +760,12 @@ local function applyChamsToCharacter(character)
     
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
+            -- Если есть выделение игрока — пропускаем CHAMS
             if hasPlayerHighlight and part:GetAttribute("highlighted_player") then
                 continue
             end
             
+            -- Если нет выделения — накладываем CHAMS
             if not part:FindFirstChild("Highlight") and not hasPlayerHighlight then
                 local highlight = Instance.new("Highlight")
                 highlight.Parent = part
@@ -776,11 +780,12 @@ local function applyChamsToCharacter(character)
     end
 end
 
--- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА
+-- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА (С УЧЕТОМ ПРОЗРАЧНОСТИ CHAMS)
 local function applyPlayerHighlightToCharacter(character, color)
     if not character or character == player.Character then return end
     if not highlightEnabled then return end
     
+    -- Сначала очищаем старые выделения
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
             local highlight = part:FindFirstChild("Highlight")
@@ -789,13 +794,14 @@ local function applyPlayerHighlightToCharacter(character, color)
         end
     end
     
+    -- Накладываем новое выделение с прозрачностью от CHAMS
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
             local highlight = Instance.new("Highlight")
             highlight.Parent = part
             highlight.Adornee = part
             highlight.FillColor = color
-            highlight.FillTransparency = chamsSettings.Transparency
+            highlight.FillTransparency = chamsSettings.Transparency -- Используем прозрачность CHAMS
             highlight.OutlineColor = color
             highlight.OutlineTransparency = 0.1
             part:SetAttribute("highlighted_player", true)
@@ -807,6 +813,7 @@ end
 local function updateAllHighlights()
     clearAllHighlights()
     
+    -- Сначала накладываем CHAMS на всех
     if chamsEnabled then
         for _, pl in pairs(game.Players:GetPlayers()) do
             if pl ~= player and pl.Character then
@@ -815,10 +822,12 @@ local function updateAllHighlights()
         end
     end
     
+    -- Затем поверх — выделение выбранных игроков
     if highlightEnabled then
         for _, playerName in ipairs(playerHighlightSettings.SelectedPlayers) do
             local targetPlayer = game.Players:FindFirstChild(playerName)
             if targetPlayer and targetPlayer.Character then
+                -- Удаляем CHAMS с этого игрока
                 for _, part in pairs(targetPlayer.Character:GetDescendants()) do
                     if part:IsA("BasePart") and part:GetAttribute("highlighted") then
                         local highlight = part:FindFirstChild("Highlight")
@@ -826,6 +835,7 @@ local function updateAllHighlights()
                         part:SetAttribute("highlighted", nil)
                     end
                 end
+                -- Накладываем выделение
                 applyPlayerHighlightToCharacter(targetPlayer.Character, playerHighlightSettings.Color)
             end
         end
@@ -896,7 +906,7 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
--- ПРОЗРАЧНОСТЬ CHAMS
+-- ПРОЗРАЧНОСТЬ CHAMS (ПРИМЕНЯЕТСЯ И К ВЫДЕЛЕННЫМ)
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -905,6 +915,7 @@ local transparencySlider = FuncTab:CreateSlider({
     Flag = "chams_transparency",
     Callback = function(value)
         chamsSettings.Transparency = value
+        -- Обновляем все выделения
         if chamsEnabled or highlightEnabled then
             updateAllHighlights()
         end
@@ -981,7 +992,7 @@ for _, pl in pairs(game.Players:GetPlayers()) do
 end
 
 -- ============================================
--- AIMBOT
+-- ОСТАЛЬНОЙ КОД (AIMBOT, ANTI-AIM, SPIN-BOT)
 -- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
@@ -1777,7 +1788,7 @@ loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
 })
 
 -- ============================================
--- ВКЛАДКА SETTINGS
+-- НОВАЯ ВКЛАДКА SETTINGS
 -- ============================================
 local SettingsTab = Window:CreateTab("Settings", "settings")
 
@@ -1797,12 +1808,15 @@ local fpsToggle = SettingsTab:CreateToggle({
 local disableAllButton = SettingsTab:CreateButton({
     Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
     Callback = function()
+        -- Выключаем все тогглы
         for key, value in pairs(toggles) do
             toggles[key] = false
         end
         
+        -- Отключаем ESP
         Sense.Unload()
         
+        -- Отключаем CHAMS и выделение
         chamsEnabled = false
         highlightEnabled = false
         if chamsConnection then
@@ -1811,16 +1825,20 @@ local disableAllButton = SettingsTab:CreateButton({
         end
         clearAllHighlights()
         
+        -- Отключаем No Clip
         if noclip then
             noclip:Disconnect()
             noclip = nil
         end
         
+        -- Отключаем Aimbot
         aimbotEnabled = false
         fovCircle.Visible = false
         
+        -- Отключаем Anti-Aim
         antiAim = false
         
+        -- Отключаем Spin-Bot
         if spinBot then
             for i,v in pairs(hrp:GetChildren()) do
                 if v.Name == "Spinning" then
@@ -1831,6 +1849,7 @@ local disableAllButton = SettingsTab:CreateButton({
             spinBot = false
         end
         
+        -- Отключаем Visual эффекты
         game.Lighting.Ambient = ambient
         game.Lighting.OutdoorAmbient = outdoor_ambient
         game.Lighting.FogStart = fogstart
@@ -1838,13 +1857,18 @@ local disableAllButton = SettingsTab:CreateButton({
         game.Lighting.ClockTime = clocktime
         game.Lighting.GlobalShadows = shadows
         
+        -- Отключаем Anti-AFK
         for i,v in pairs(getconnections(player.Idled)) do
             v:Enable()
         end
         
+        -- Отключаем AutoEZ
         autoez = false
+        
+        -- Отключаем FPS счетчик
         toggleFPS(false)
         
+        -- Уведомление
         Rayfield:Notify({
             Title = "❌ Всё отключено!",
             Content = "Все функции были деактивированы",
