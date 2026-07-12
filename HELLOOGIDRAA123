@@ -399,7 +399,7 @@ local function aimAt(player, part)
     end
 end
 
--- SILENT AIM ЛОГИКА
+-- SILENT AIM ЛОГИКА (БЕЗОПАСНАЯ ВЕРСИЯ)
 local function getSilentTarget()
     local nearestPlayer = nil
     local closestPart = nil
@@ -428,7 +428,7 @@ local function getSilentTarget()
     return nearestPlayer, closestPart
 end
 
--- ПЕРЕХВАТ КЛИКА ДЛЯ SILENT AIM
+-- БЕЗОПАСНЫЙ SILENT AIM ЧЕРЕЗ МЫШЬ
 local function onMouseClick()
     if not silentAimEnabled then return end
     
@@ -436,19 +436,12 @@ local function onMouseClick()
     if target and targetPart then
         local predictedPos = predict(target, targetPart)
         if predictedPos then
-            -- Меняем направление выстрела
-            local direction = (predictedPos - camera.CFrame.Position).unit
-            local newCFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction * 100)
-            
-            -- Подменяем Hit для мыши
-            local originalHit = mouse.Hit
-            mouse.Hit = newCFrame
-            
-            -- Даём время на выстрел
+            -- Просто поворачиваем камеру на долю секунды (незаметно)
+            local oldCFrame = camera.CFrame
+            local newCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
+            camera.CFrame = newCFrame
             task.wait(0.01)
-            
-            -- Возвращаем обратно
-            mouse.Hit = originalHit
+            camera.CFrame = oldCFrame
         end
     end
 end
