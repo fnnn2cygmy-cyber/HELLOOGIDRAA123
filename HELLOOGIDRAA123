@@ -619,10 +619,10 @@ local chamsSettings = {
     Transparency = 0.5
 }
 
--- НАСТРОЙКИ ВЫДЕЛЕНИЯ ИГРОКОВ
+-- НАСТРОЙКИ ВЫДЕЛЕНИЯ ИГРОКОВ (МНОЖЕСТВЕННЫЙ ВЫБОР)
 local playerHighlightSettings = {
     Enabled = false,
-    SelectedPlayer = nil,
+    SelectedPlayers = {}, -- ТЕПЕРЬ ЭТО ТАБЛИЦА С ИМЕНАМИ
     Color = Color3.fromRGB(255, 255, 0) -- ЖЕЛТЫЙ ПО УМОЛЧАНИЮ
 }
 
@@ -640,7 +640,7 @@ end
 -- ФУНКЦИЯ ДЛЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ
 local function applyPlayerHighlight(character, color)
     if not character then return end
-    
+
     -- Удаляем старые хайлайты
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
@@ -649,9 +649,9 @@ local function applyPlayerHighlight(character, color)
             part:SetAttribute("highlighted_player", nil)
         end
     end
-    
+
     if not playerHighlightSettings.Enabled or not color then return end
-    
+
     -- Наносим новый хайлайт
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
@@ -681,12 +681,14 @@ local function updateAllPlayerHighlights()
             end
         end
     end
-    
-    -- Применяем выделение только выбранному игроку
-    if playerHighlightSettings.Enabled and playerHighlightSettings.SelectedPlayer then
-        local targetPlayer = game.Players:FindFirstChild(playerHighlightSettings.SelectedPlayer)
-        if targetPlayer and targetPlayer.Character then
-            applyPlayerHighlight(targetPlayer.Character, playerHighlightSettings.Color)
+
+    -- Применяем выделение для всех выбранных игроков
+    if playerHighlightSettings.Enabled and #playerHighlightSettings.SelectedPlayers > 0 then
+        for _, playerName in ipairs(playerHighlightSettings.SelectedPlayers) do
+            local targetPlayer = game.Players:FindFirstChild(playerName)
+            if targetPlayer and targetPlayer.Character then
+                applyPlayerHighlight(targetPlayer.Character, playerHighlightSettings.Color)
+            end
         end
     end
 end
@@ -717,17 +719,18 @@ local highlightToggle = FuncTab:CreateToggle({
     end
 })
 
--- ДРОПДАУН СО СПИСКОМ ИГРОКОВ
+-- ДРОПДАУН СО СПИСКОМ ИГРОКОВ (ТЕПЕРЬ МНОЖЕСТВЕННЫЙ ВЫБОР)
 local playerDropdown = FuncTab:CreateDropdown({
-    Name = "Выберите игрока",
+    Name = "Выберите игроков",
     Options = updatePlayerList(),
-    CurrentOption = {""},
+    CurrentOption = {},
+    MultipleOptions = true, -- ВКЛЮЧАЕМ МНОЖЕСТВЕННЫЙ ВЫБОР
     Flag = "player_select",
     Callback = function(option)
-        if type(option) == "table" and #option > 0 then
-            playerHighlightSettings.SelectedPlayer = option[1]
+        if type(option) == "table" then
+            playerHighlightSettings.SelectedPlayers = option
         else
-            playerHighlightSettings.SelectedPlayer = option
+            playerHighlightSettings.SelectedPlayers = {option}
         end
         updateAllPlayerHighlights()
     end
@@ -742,10 +745,15 @@ end)
 game.Players.PlayerRemoving:Connect(function()
     local newOptions = updatePlayerList()
     playerDropdown:Refresh(newOptions, {})
-    if playerHighlightSettings.SelectedPlayer and not game.Players:FindFirstChild(playerHighlightSettings.SelectedPlayer) then
-        playerHighlightSettings.SelectedPlayer = nil
-        updateAllPlayerHighlights()
+    -- Удаляем выбывших игроков из списка выбранных
+    local updatedList = {}
+    for _, name in ipairs(playerHighlightSettings.SelectedPlayers) do
+        if game.Players:FindFirstChild(name) then
+            table.insert(updatedList, name)
+        end
     end
+    playerHighlightSettings.SelectedPlayers = updatedList
+    updateAllPlayerHighlights()
 end)
 
 -- ЦВЕТ ПИКЕР ДЛЯ ВЫДЕЛЕННОГО ИГРОКА
@@ -763,7 +771,7 @@ for _, pl in pairs(game.Players:GetPlayers()) do
     if pl ~= player then
         pl.CharacterAdded:Connect(function(character)
             task.wait(0.5)
-            if playerHighlightSettings.Enabled and playerHighlightSettings.SelectedPlayer == pl.Name then
+            if playerHighlightSettings.Enabled and table.find(playerHighlightSettings.SelectedPlayers, pl.Name) then
                 applyPlayerHighlight(character, playerHighlightSettings.Color)
             end
         end)
