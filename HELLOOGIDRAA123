@@ -210,7 +210,7 @@ fovCircle.Visible = false
 
 local currentTarget = nil
 
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ (ЧТОБЫ ОТКЛЮЧАТЬ ВСЁ)
+-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ
 local toggles = {
     esp = false,
     boxfill = false,
@@ -232,8 +232,63 @@ local toggles = {
     removefog = false,
     fullbrightness = false,
     autoez = false,
-    antiafk = false
+    antiafk = false,
+    fpscounter = false
 }
+
+-- FPS СЧЕТЧИК
+local fpsLabel = nil
+local fpsConnection = nil
+
+local function toggleFPS(value)
+    toggles.fpscounter = value
+    if value then
+        if not fpsLabel then
+            fpsLabel = Drawing.new("Text")
+            fpsLabel.Visible = true
+            fpsLabel.Color = Color3.fromRGB(0, 255, 0)
+            fpsLabel.Size = 18
+            fpsLabel.Center = false
+            fpsLabel.Outline = true
+            fpsLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
+            fpsLabel.Position = Vector2.new(10, 10)
+            fpsLabel.Text = "FPS: 0"
+        end
+        
+        local lastTime = tick()
+        local frameCount = 0
+        
+        fpsConnection = RunService.RenderStepped:Connect(function()
+            frameCount = frameCount + 1
+            local currentTime = tick()
+            if currentTime - lastTime >= 1 then
+                local fps = math.floor(frameCount / (currentTime - lastTime))
+                fpsLabel.Text = "FPS: " .. tostring(fps)
+                frameCount = 0
+                lastTime = currentTime
+                
+                -- Меняем цвет в зависимости от FPS
+                if fps >= 60 then
+                    fpsLabel.Color = Color3.fromRGB(0, 255, 0)
+                elseif fps >= 30 then
+                    fpsLabel.Color = Color3.fromRGB(255, 255, 0)
+                else
+                    fpsLabel.Color = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end)
+    else
+        if fpsConnection then
+            fpsConnection:Disconnect()
+            fpsConnection = nil
+        end
+        if fpsLabel then
+            fpsLabel.Visible = false
+            fpsLabel:Remove()
+            fpsLabel = nil
+        end
+    end
+end
 
 local function checkTeam(player)
     if teamCheck and player.Team == plr.Team then
@@ -422,7 +477,7 @@ mouse.Button2Up:Connect(function()
     end
 end)
 
--- SPEED WALK (РАБОЧАЯ ВЕРСИЯ БЕЗ INFINITE JUMP)
+-- SPEED WALK
 mouse.KeyDown:connect(function(i)
     key=i:byte()
     for i,v in {119, 97, 115, 100} do --WASD
@@ -431,7 +486,6 @@ mouse.KeyDown:connect(function(i)
             return
         end
     end
-    -- БЛОК ПРЫЖКА ПОЛНОСТЬЮ УДАЛЁН
 end)
 
 -- CTRL TP
@@ -637,7 +691,7 @@ local Toggle = FuncTab:CreateToggle({
 })
 
 -- ============================================
--- CHAMS + ВЫДЕЛЕНИЕ ИГРОКОВ (С ПРИОРИТЕТОМ)
+-- CHAMS + ВЫДЕЛЕНИЕ ИГРОКОВ
 -- ============================================
 local chamsConnection = nil
 local chamsEnabled = false
@@ -726,7 +780,7 @@ local function applyChamsToCharacter(character)
     end
 end
 
--- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА
+-- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА (С УЧЕТОМ ПРОЗРАЧНОСТИ CHAMS)
 local function applyPlayerHighlightToCharacter(character, color)
     if not character or character == player.Character then return end
     if not highlightEnabled then return end
@@ -740,14 +794,14 @@ local function applyPlayerHighlightToCharacter(character, color)
         end
     end
     
-    -- Накладываем новое выделение
+    -- Накладываем новое выделение с прозрачностью от CHAMS
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
             local highlight = Instance.new("Highlight")
             highlight.Parent = part
             highlight.Adornee = part
             highlight.FillColor = color
-            highlight.FillTransparency = 0.3
+            highlight.FillTransparency = chamsSettings.Transparency -- Используем прозрачность CHAMS
             highlight.OutlineColor = color
             highlight.OutlineTransparency = 0.1
             part:SetAttribute("highlighted_player", true)
@@ -808,7 +862,6 @@ local chamsToggle = FuncTab:CreateToggle({
         chamsEnabled = value
         toggles.chams = value
         if value then
-            -- Подключаем события для новых игроков
             chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function(character)
                     task.wait(0.5)
@@ -853,6 +906,7 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
+-- ПРОЗРАЧНОСТЬ CHAMS (ПРИМЕНЯЕТСЯ И К ВЫДЕЛЕННЫМ)
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -861,7 +915,10 @@ local transparencySlider = FuncTab:CreateSlider({
     Flag = "chams_transparency",
     Callback = function(value)
         chamsSettings.Transparency = value
-        if chamsEnabled then updateAllHighlights() end
+        -- Обновляем все выделения
+        if chamsEnabled or highlightEnabled then
+            updateAllHighlights()
+        end
     end
 })
 
@@ -935,7 +992,7 @@ for _, pl in pairs(game.Players:GetPlayers()) do
 end
 
 -- ============================================
--- ОСТАЛЬНОЙ КОД (AIMBOT, ANTI-AIM, SPIN-BOT И Т.Д.)
+-- ОСТАЛЬНОЙ КОД (AIMBOT, ANTI-AIM, SPIN-BOT)
 -- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
@@ -1283,7 +1340,7 @@ loadstring(game:HttpGet("https://pastebin.com/raw/sAVghM5x"))()
    end,
 })
 
--- НОВАЯ ВКЛАДКА "Other Scripts"
+-- Other Scripts
 local OtherScriptsTab = Window:CreateTab("Other Scripts", "file-code-2")
 local OtherSection = OtherScriptsTab:CreateSection("Other Scripts")
 
@@ -1355,7 +1412,7 @@ loadstring(game:HttpGet("https://pastebin.com/raw/gvUFpwQw"))()
 })
 
 local Slider = OtherTab:CreateSlider({
-   Name = "Stretched Resolution (растег экрана)",
+   Name = "Stretched Resolution",
    Range = {0.01, 1.00},
    Increment = 0.01,
    Suffix = "Resolution",
@@ -1393,7 +1450,7 @@ loadstring(game:HttpGet('https://pastefy.app/S7xNJSXX/raw'))()execute("Script14"
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "Big Jump Button (works on mobile, tablet have errors)",
+   Name = "Big Jump Button",
    Callback = function()
 loadstring(game:HttpGet("https://pastebin.com/raw/p3TfEqQ2"))()
    end,
@@ -1413,7 +1470,7 @@ local Toggle = OtherTab:CreateToggle({
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "B tools (visual lol)",
+   Name = "B tools",
    Callback = function()
 loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/BTools.txt"))()
    end,
@@ -1465,7 +1522,7 @@ local Toggle = OtherTab:CreateToggle({
 			elseif num==6 then
 				text='ezzzzz win by antioder hub'
 			end
-			if game.PlaceId==286090429 then -- If arsenal
+			if game.PlaceId==286090429 then
 				local args = {
 				    [1] = "Hah!",
 				    [2] = text,
@@ -1731,65 +1788,21 @@ loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
 })
 
 -- ============================================
--- НОВАЯ ВКЛАДКА SETTINGS (В САМОМ КОНЦЕ)
+-- НОВАЯ ВКЛАДКА SETTINGS
 -- ============================================
 local SettingsTab = Window:CreateTab("Settings", "settings")
 
-local SettingsSection = SettingsTab:CreateSection("Настройки Rayfield")
+local SettingsSection = SettingsTab:CreateSection("Управление")
 
--- Цвет меню
-local menuColorPicker = SettingsTab:CreateColorPicker({
-    Name = "Цвет меню",
-    Color = Color3.fromRGB(30, 30, 30),
-    Callback = function(Color)
-        for _, gui in pairs(game.CoreGui:GetDescendants()) do
-            if gui:IsA("Frame") and gui.Name == "MainFrame" then
-                gui.BackgroundColor3 = Color
-            end
-        end
-    end
-})
-
--- Прозрачность меню
-local menuTransparencySlider = SettingsTab:CreateSlider({
-    Name = "Прозрачность меню",
-    Range = {0, 1},
-    Increment = 0.05,
-    CurrentValue = 1,
-    Flag = "menu_transparency",
+-- FPS СЧЕТЧИК
+local fpsToggle = SettingsTab:CreateToggle({
+    Name = "Показать FPS",
+    CurrentValue = false,
+    Flag = "fps_counter",
     Callback = function(value)
-        for _, gui in pairs(game.CoreGui:GetDescendants()) do
-            if gui:IsA("Frame") and gui.Name == "MainFrame" then
-                gui.BackgroundTransparency = 1 - value
-            end
-        end
+        toggleFPS(value)
     end
 })
-
--- Смена темы Rayfield
-local themeDropdown = SettingsTab:CreateDropdown({
-    Name = "Тема Rayfield",
-    Options = {"Ocean", "Dark", "Light", "Midnight", "Sunset"},
-    CurrentOption = "Ocean",
-    Flag = "rayfield_theme",
-    Callback = function(option)
-        local colors = {
-            Ocean = Color3.fromRGB(0, 119, 255),
-            Dark = Color3.fromRGB(40, 40, 40),
-            Light = Color3.fromRGB(240, 240, 240),
-            Midnight = Color3.fromRGB(20, 20, 40),
-            Sunset = Color3.fromRGB(255, 100, 50)
-        }
-        local color = colors[option] or Color3.fromRGB(0, 119, 255)
-        for _, gui in pairs(game.CoreGui:GetDescendants()) do
-            if gui:IsA("Frame") and gui.Name == "MainFrame" then
-                gui.BackgroundColor3 = color
-            end
-        end
-    end
-})
-
-local SettingsSection2 = SettingsTab:CreateSection("Управление")
 
 -- КНОПКА ОТКЛЮЧЕНИЯ ВСЕГО
 local disableAllButton = SettingsTab:CreateButton({
@@ -1851,6 +1864,9 @@ local disableAllButton = SettingsTab:CreateButton({
         
         -- Отключаем AutoEZ
         autoez = false
+        
+        -- Отключаем FPS счетчик
+        toggleFPS(false)
         
         -- Уведомление
         Rayfield:Notify({
