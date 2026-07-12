@@ -210,6 +210,31 @@ fovCircle.Visible = false
 
 local currentTarget = nil
 
+-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ (ЧТОБЫ ОТКЛЮЧАТЬ ВСЁ)
+local toggles = {
+    esp = false,
+    boxfill = false,
+    name = false,
+    distance = false,
+    noclip = false,
+    chams = false,
+    highlight = false,
+    aimbot = false,
+    fovvisibility = false,
+    wallcheck = false,
+    stickyaim = false,
+    teamcheck = false,
+    healthcheck = false,
+    circlerainbow = false,
+    antiaim = false,
+    spinbot = false,
+    pinkglasses = false,
+    removefog = false,
+    fullbrightness = false,
+    autoez = false,
+    antiafk = false
+}
+
 local function checkTeam(player)
     if teamCheck and player.Team == plr.Team then
         return true
@@ -525,8 +550,9 @@ local FuncSection = FuncTab:CreateSection("ESP")
 local Toggle = FuncTab:CreateToggle({
    Name = "ESP",
    CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "Toggle1",
    Callback = function(value)
+           toggles.esp = value
            if value then
                    Sense.teamSettings.enemy.enabled = true
                    Sense.teamSettings.enemy.box = true
@@ -542,8 +568,9 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Box Fill",
    CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "Toggle1",
    Callback = function(value)
+           toggles.boxfill = value
            if value then
                    Sense.teamSettings.enemy.boxFill = true
                    Sense.teamSettings.friendly.boxFill = true    
@@ -557,8 +584,9 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Name",
    CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "Toggle1",
    Callback = function(value)
+           toggles.name = value
            if value then
                    Sense.teamSettings.enemy.name = true
                    Sense.teamSettings.friendly.name = true    
@@ -572,8 +600,9 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Distance",
    CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "Toggle1",
    Callback = function(value)
+           toggles.distance = value
            if value then
                    Sense.teamSettings.enemy.distance = true
                    Sense.teamSettings.friendly.distance = true    
@@ -591,6 +620,7 @@ local Toggle = FuncTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_noclip",
 	Callback = function(state)
+		toggles.noclip = state
 		if state then
 			noclip=RunService.Stepped:Connect(function()
 				for i,v in pairs(player.Character:GetDescendants()) do
@@ -699,6 +729,7 @@ local highlightToggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "highlight_toggle",
     Callback = function(value)
+        toggles.highlight = value
         playerHighlightSettings.Enabled = value
         if not value then
             -- Очищаем все выделения при выключении
@@ -784,6 +815,7 @@ local chamsToggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "chams_toggle",
     Callback = function(value)
+        toggles.chams = value
         if value then
             local function applyChams(character)
                 if character and character ~= player.Character then
@@ -985,6 +1017,7 @@ local aimbot = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "Aimbot",
     Callback = function(Value)
+        toggles.aimbot = Value
         aimbotEnabled = Value
         fovCircle.Visible = Value
     end
@@ -1028,6 +1061,7 @@ local fovvisibility = FuncTab:CreateToggle({
     CurrentValue = true,
     Flag = "FovVisibility",
     Callback = function(Value)
+        toggles.fovvisibility = Value
         fovCircle.Visible = Value
     end
 })
@@ -1049,6 +1083,7 @@ local wallcheck = FuncTab:CreateToggle({
     CurrentValue = true,
     Flag = "WallCheck",
     Callback = function(Value)
+        toggles.wallcheck = Value
         wallCheck = Value
     end
 })
@@ -1058,6 +1093,7 @@ local stickyaim = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "StickyAim",
     Callback = function(Value)
+        toggles.stickyaim = Value
         stickyAimEnabled = Value
     end
 })
@@ -1067,6 +1103,7 @@ local teamchecktoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "TeamCheck",
     Callback = function(Value)
+        toggles.teamcheck = Value
         teamCheck = Value
     end
 })
@@ -1076,6 +1113,7 @@ local healthchecktoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "HealthCheck",
     Callback = function(Value)
+        toggles.healthcheck = Value
         healthCheck = Value
     end
 })
@@ -1113,6 +1151,7 @@ local circlerainbow = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "RainbowFov",
     Callback = function(Value)
+        toggles.circlerainbow = Value
         rainbowFov = Value
     end
 })
@@ -1124,6 +1163,7 @@ local antiaimtoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "AntiAim",
     Callback = function(Value)
+        toggles.antiaim = Value
         antiAim = Value
         if Value then
             Rayfield:Notify({Title = "Anti-Aim", Content = "Enabled!", Duration = 1, Image = 4483362458,})
@@ -1200,6 +1240,7 @@ local spinbottoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "SpinBot",
     Callback = function(Value)
+        toggles.spinbot = Value
         spinBot = Value
         if Value then
             for i,v in pairs(hrp:GetChildren()) do
@@ -1394,6 +1435,7 @@ local Toggle = OtherTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_antiafk",
 	Callback=function(state)
+		toggles.antiafk = state
 		for i,v in pairs(getconnections(player.Idled)) do
 			if state then v:Disable() end
 			if not state then v:Enable() end
@@ -1437,6 +1479,7 @@ local Toggle = OtherTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_autoez",
 	Callback = function(state)
+		toggles.autoez = state
 		autoez=state
 		while autoez and wait(10) do
 			local num=math.random(1, 6)
@@ -1597,6 +1640,7 @@ local Toggle = VisualTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_pink_glasses",
 	Callback=function(state)
+		toggles.pinkglasses = state
 		if state then
 			game.Lighting.Ambient=Color3.fromRGB(225, 20, 147)
 			game.Lighting.OutdoorAmbient=Color3.fromRGB(225, 20, 147)
@@ -1611,7 +1655,8 @@ local Toggle = VisualTab:CreateToggle({
 	Name = "Remove Fog",
 	CurrentValue = false,
 	Flag = "universal_remove_fog",
-	Callback = function(state)
+	Callback=function(state)
+		toggles.removefog = state
 		if state then
 			game.Lighting.FogStart=9e9
 		else
@@ -1624,7 +1669,8 @@ local Toggle = VisualTab:CreateToggle({
 	Name = "Full Brightness",
 	CurrentValue = false,
 	Flag = "universal_full_brightness",
-	Callback = function(state)
+	Callback=function(state)
+		toggles.fullbrightness = state
 		if state then
 			game.Lighting.Brightness=2
 			game.Lighting.ClockTime=14
@@ -1713,4 +1759,165 @@ local Button = SexTab:CreateButton({
    Callback = function()
 loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
    end,
+})
+
+-- ============================================
+-- НОВАЯ ВКЛАДКА SETTINGS (В САМОМ КОНЦЕ)
+-- ============================================
+local SettingsTab = Window:CreateTab("Settings", "settings")
+
+local SettingsSection = SettingsTab:CreateSection("Настройки Rayfield")
+
+-- Цвет меню
+local menuColorPicker = SettingsTab:CreateColorPicker({
+    Name = "Цвет меню",
+    Color = Color3.fromRGB(30, 30, 30),
+    Callback = function(Color)
+        -- Меняем цвет фона окон Rayfield
+        for _, gui in pairs(game.CoreGui:GetDescendants()) do
+            if gui:IsA("Frame") and gui.Name == "MainFrame" then
+                gui.BackgroundColor3 = Color
+            end
+        end
+    end
+})
+
+-- Прозрачность меню
+local transparencySlider = SettingsTab:CreateSlider({
+    Name = "Прозрачность меню",
+    Range = {0, 1},
+    Increment = 0.05,
+    CurrentValue = 1,
+    Flag = "menu_transparency",
+    Callback = function(value)
+        for _, gui in pairs(game.CoreGui:GetDescendants()) do
+            if gui:IsA("Frame") and gui.Name == "MainFrame" then
+                gui.BackgroundTransparency = 1 - value
+            end
+        end
+    end
+})
+
+-- Смена темы Rayfield
+local themeDropdown = SettingsTab:CreateDropdown({
+    Name = "Тема Rayfield",
+    Options = {"Ocean", "Dark", "Light", "Midnight", "Sunset"},
+    CurrentOption = "Ocean",
+    Flag = "rayfield_theme",
+    Callback = function(option)
+        -- Rayfield не имеет встроенной смены темы, но мы можем изменить цвет вручную
+        local colors = {
+            Ocean = Color3.fromRGB(0, 119, 255),
+            Dark = Color3.fromRGB(40, 40, 40),
+            Light = Color3.fromRGB(240, 240, 240),
+            Midnight = Color3.fromRGB(20, 20, 40),
+            Sunset = Color3.fromRGB(255, 100, 50)
+        }
+        local color = colors[option] or Color3.fromRGB(0, 119, 255)
+        for _, gui in pairs(game.CoreGui:GetDescendants()) do
+            if gui:IsA("Frame") and gui.Name == "MainFrame" then
+                gui.BackgroundColor3 = color
+            end
+        end
+    end
+})
+
+local SettingsSection2 = SettingsTab:CreateSection("Управление")
+
+-- КНОПКА ОТКЛЮЧЕНИЯ ВСЕГО
+local disableAllButton = SettingsTab:CreateButton({
+    Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
+    Callback = function()
+        -- Выключаем все тогглы
+        for key, value in pairs(toggles) do
+            toggles[key] = false
+        end
+        
+        -- Отключаем ESP
+        Sense.Unload()
+        
+        -- Отключаем CHAMS
+        if chamsConnection then
+            chamsConnection:Disconnect()
+            chamsConnection = nil
+        end
+        for _, pl in pairs(game.Players:GetPlayers()) do
+            if pl ~= player and pl.Character then
+                for _, part in pairs(pl.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                        local highlight = part:FindFirstChild("Highlight")
+                        if highlight then highlight:Destroy() end
+                        part:SetAttribute("highlighted", nil)
+                    end
+                    if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
+                        local highlight = part:FindFirstChild("Highlight")
+                        if highlight then highlight:Destroy() end
+                        part:SetAttribute("highlighted_player", nil)
+                    end
+                end
+            end
+        end
+        
+        -- Отключаем No Clip
+        if noclip then
+            noclip:Disconnect()
+            noclip = nil
+        end
+        
+        -- Отключаем Aimbot
+        aimbotEnabled = false
+        fovCircle.Visible = false
+        
+        -- Отключаем Anti-Aim
+        antiAim = false
+        
+        -- Отключаем Spin-Bot
+        if spinBot then
+            for i,v in pairs(hrp:GetChildren()) do
+                if v.Name == "Spinning" then
+                    v:Destroy()
+                end
+            end
+            plr.Character.Humanoid.AutoRotate = true
+            spinBot = false
+        end
+        
+        -- Отключаем Visual эффекты
+        game.Lighting.Ambient = ambient
+        game.Lighting.OutdoorAmbient = outdoor_ambient
+        game.Lighting.FogStart = fogstart
+        game.Lighting.Brightness = brightness
+        game.Lighting.ClockTime = clocktime
+        game.Lighting.GlobalShadows = shadows
+        
+        -- Отключаем Anti-AFK
+        for i,v in pairs(getconnections(player.Idled)) do
+            v:Enable()
+        end
+        
+        -- Отключаем AutoEZ
+        autoez = false
+        
+        -- Уведомление
+        Rayfield:Notify({
+            Title = "❌ Всё отключено!",
+            Content = "Все функции были деактивированы",
+            Duration = 3,
+        })
+    end
+})
+
+-- Кнопка перезагрузки скрипта
+local restartButton = SettingsTab:CreateButton({
+    Name = "🔄 Перезагрузить скрипт",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "🔄 Перезагрузка...",
+            Content = "Скрипт будет перезагружен",
+            Duration = 2,
+        })
+        task.wait(1)
+        -- Просто перезагружаем скрипт через loadstring
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
+    end
 })
