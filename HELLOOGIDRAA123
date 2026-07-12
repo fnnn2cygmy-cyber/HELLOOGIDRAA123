@@ -610,6 +610,7 @@ local Toggle = FuncTab:CreateToggle({
 
 -- CHAMS (БАЗОВЫЙ ЦВЕТ ЗАВИСИТ ОТ КОМАНДЫ)
 local chamsConnection = nil
+local highlightConnections = {} -- для хранения подключений
 
 -- НАСТРОЙКИ CHAMS
 local chamsSettings = {
@@ -618,6 +619,158 @@ local chamsSettings = {
     Transparency = 0.5
 }
 
+-- НАСТРОЙКИ ВЫДЕЛЕНИЯ ИГРОКОВ
+local playerHighlightSettings = {
+    Enabled = false,
+    SelectedPlayer = nil,
+    Color = Color3.fromRGB(255, 255, 0) -- ЖЕЛТЫЙ ПО УМОЛЧАНИЮ
+}
+
+-- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СПИСКА ИГРОКОВ
+local function updatePlayerList()
+    local playerNames = {}
+    for _, pl in pairs(game.Players:GetPlayers()) do
+        if pl ~= player then
+            table.insert(playerNames, pl.Name)
+        end
+    end
+    return playerNames
+end
+
+-- ФУНКЦИЯ ДЛЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ
+local function applyPlayerHighlight(character, color)
+    if not character then return end
+    
+    -- Удаляем старые хайлайты
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
+            local highlight = part:FindFirstChild("Highlight")
+            if highlight then highlight:Destroy() end
+            part:SetAttribute("highlighted_player", nil)
+        end
+    end
+    
+    if not playerHighlightSettings.Enabled or not color then return end
+    
+    -- Наносим новый хайлайт
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = part
+            highlight.Adornee = part
+            highlight.FillColor = color
+            highlight.FillTransparency = 0.3
+            highlight.OutlineColor = color
+            highlight.OutlineTransparency = 0.1
+            part:SetAttribute("highlighted_player", true)
+        end
+    end
+end
+
+-- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ ВЫДЕЛЕНИЯ ВСЕХ ИГРОКОВ
+local function updateAllPlayerHighlights()
+    -- Сначала очищаем все выделения
+    for _, pl in pairs(game.Players:GetPlayers()) do
+        if pl ~= player and pl.Character then
+            for _, part in pairs(pl.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
+                    local highlight = part:FindFirstChild("Highlight")
+                    if highlight then highlight:Destroy() end
+                    part:SetAttribute("highlighted_player", nil)
+                end
+            end
+        end
+    end
+    
+    -- Применяем выделение только выбранному игроку
+    if playerHighlightSettings.Enabled and playerHighlightSettings.SelectedPlayer then
+        local targetPlayer = game.Players:FindFirstChild(playerHighlightSettings.SelectedPlayer)
+        if targetPlayer and targetPlayer.Character then
+            applyPlayerHighlight(targetPlayer.Character, playerHighlightSettings.Color)
+        end
+    end
+end
+
+-- ТОГГЛ ВКЛЮЧЕНИЯ ВЫДЕЛЕНИЯ
+local highlightToggle = FuncTab:CreateToggle({
+    Name = "Выделение игроков",
+    CurrentValue = false,
+    Flag = "highlight_toggle",
+    Callback = function(value)
+        playerHighlightSettings.Enabled = value
+        if not value then
+            -- Очищаем все выделения при выключении
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    for _, part in pairs(pl.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
+                            local highlight = part:FindFirstChild("Highlight")
+                            if highlight then highlight:Destroy() end
+                            part:SetAttribute("highlighted_player", nil)
+                        end
+                    end
+                end
+            end
+        else
+            updateAllPlayerHighlights()
+        end
+    end
+})
+
+-- ДРОПДАУН СО СПИСКОМ ИГРОКОВ
+local playerDropdown = FuncTab:CreateDropdown({
+    Name = "Выберите игрока",
+    Options = updatePlayerList(),
+    CurrentOption = {""},
+    Flag = "player_select",
+    Callback = function(option)
+        if type(option) == "table" and #option > 0 then
+            playerHighlightSettings.SelectedPlayer = option[1]
+        else
+            playerHighlightSettings.SelectedPlayer = option
+        end
+        updateAllPlayerHighlights()
+    end
+})
+
+-- ОБНОВЛЕНИЕ СПИСКА ПРИ ДОБАВЛЕНИИ/УДАЛЕНИИ ИГРОКОВ
+game.Players.PlayerAdded:Connect(function()
+    local newOptions = updatePlayerList()
+    playerDropdown:Refresh(newOptions, {})
+end)
+
+game.Players.PlayerRemoving:Connect(function()
+    local newOptions = updatePlayerList()
+    playerDropdown:Refresh(newOptions, {})
+    if playerHighlightSettings.SelectedPlayer and not game.Players:FindFirstChild(playerHighlightSettings.SelectedPlayer) then
+        playerHighlightSettings.SelectedPlayer = nil
+        updateAllPlayerHighlights()
+    end
+end)
+
+-- ЦВЕТ ПИКЕР ДЛЯ ВЫДЕЛЕННОГО ИГРОКА
+local highlightColorPicker = FuncTab:CreateColorPicker({
+    Name = "Цвет выделения",
+    Color = playerHighlightSettings.Color,
+    Callback = function(Color)
+        playerHighlightSettings.Color = Color
+        updateAllPlayerHighlights()
+    end
+})
+
+-- СЛЕДИМ ЗА ПОЯВЛЕНИЕМ ХАРАКТЕРОВ У ИГРОКОВ
+for _, pl in pairs(game.Players:GetPlayers()) do
+    if pl ~= player then
+        pl.CharacterAdded:Connect(function(character)
+            task.wait(0.5)
+            if playerHighlightSettings.Enabled and playerHighlightSettings.SelectedPlayer == pl.Name then
+                applyPlayerHighlight(character, playerHighlightSettings.Color)
+            end
+        end)
+    end
+end
+
+-- CHAMS ТОГГЛ (ОСТАВЛЯЕМ КАК БЫЛО)
 local chamsToggle = FuncTab:CreateToggle({
     Name = "CHAMS (Командные цвета)",
     CurrentValue = false,
@@ -749,125 +902,6 @@ local teamColorPicker = FuncTab:CreateColorPicker({
         end
     end
 })
-
--- ============================================
--- НОВАЯ ФУНКЦИЯ (ВЫДЕЛЕНИЕ КОНКРЕТНЫХ ИГРОКОВ)
--- ============================================
-local selectedPlayers = {}
-local chamsSelectConnection = nil
-
-local function updateSelectedChams()
-    for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player and pl.Character then
-            for _, part in pairs(pl.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part:GetAttribute("selectedHighlight") then
-                    local highlight = part:FindFirstChild("Highlight")
-                    if highlight then highlight:Destroy() end
-                    part:SetAttribute("selectedHighlight", nil)
-                end
-            end
-        end
-    end
-
-    for _, targetName in pairs(selectedPlayers) do
-        local target = game.Players:FindFirstChild(targetName)
-        if target and target.Character then
-            for _, part in pairs(target.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    local color = selectedColor or Color3.fromRGB(255, 255, 0)
-                    local highlight = Instance.new("Highlight")
-                    highlight.Parent = part
-                    highlight.Adornee = part
-                    highlight.FillColor = color
-                    highlight.FillTransparency = 0.3
-                    highlight.OutlineColor = color
-                    highlight.OutlineTransparency = 0.1
-                    part:SetAttribute("selectedHighlight", true)
-                end
-            end
-        end
-    end
-end
-
-local function getPlayerList()
-    local list = {}
-    for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player then
-            table.insert(list, pl.Name)
-        end
-    end
-    return list
-end
-
-local selectPlayersBtn = FuncTab:CreateButton({
-    Name = "👥 Выбрать игроков для CHAMS",
-    Callback = function()
-        local options = getPlayerList()
-        if #options == 0 then
-            Rayfield:Notify({Title = "Игроки", Content = "На сервере нет других игроков", Duration = 3})
-            return
-        end
-
-        local dropdown = FuncTab:CreateDropdown({
-            Name = "Выберите игроков",
-            Options = options,
-            CurrentOption = selectedPlayers,
-            MultipleOptions = true,
-            Flag = "select_players_dropdown",
-            Callback = function(selected)
-                selectedPlayers = selected
-                updateSelectedChams()
-                Rayfield:Notify({
-                    Title = "CHAMS Select",
-                    Content = "Выбрано игроков: " .. #selected,
-                    Duration = 2
-                })
-            end
-        })
-    end
-})
-
-local selectedColor = Color3.fromRGB(255, 255, 0)
-
-local selectColorPicker = FuncTab:CreateColorPicker({
-    Name = "Цвет выделенных игроков",
-    Color = selectedColor,
-    Callback = function(Color)
-        selectedColor = Color
-        updateSelectedChams()
-    end
-})
-
-FuncTab:CreateButton({
-    Name = "🧹 Очистить выделение",
-    Callback = function()
-        selectedPlayers = {}
-        updateSelectedChams()
-        Rayfield:Notify({Title = "CHAMS Select", Content = "Выделение очищено", Duration = 2})
-    end
-})
-
-game.Players.PlayerAdded:Connect(function()
-    -- Обновляем список при добавлении игрока
-end)
-
-game.Players.PlayerRemoved:Connect(function()
-    for i, name in pairs(selectedPlayers) do
-        if not game.Players:FindFirstChild(name) then
-            table.remove(selectedPlayers, i)
-        end
-    end
-    updateSelectedChams()
-end)
-
-for _, pl in pairs(game.Players:GetPlayers()) do
-    if pl ~= player then
-        pl.CharacterAdded:Connect(function()
-            updateSelectedChams()
-        end)
-    end
-end
--- ============================================
 
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
@@ -1671,251 +1705,4 @@ local Button = SexTab:CreateButton({
    Callback = function()
 loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
    end,
-})
-
--- ============================================
--- ВКЛАДКА SETTINGS (С НОВЫМИ ФУНКЦИЯМИ)
--- ============================================
-local SettingsTab = Window:CreateTab("⚙️ Settings", "settings")
-
--- СЕКЦИЯ: ОБЩИЕ НАСТРОЙКИ
-local GeneralSection = SettingsTab:CreateSection("General Settings")
-
--- ОТКЛЮЧИТЬ ВСЕ ЭФФЕКТЫ
-SettingsTab:CreateButton({
-   Name = "❌ Отключить все эффекты",
-   Callback = function()
-       -- Отключаем ESP
-       pcall(function()
-           Sense.Unload()
-       end)
-       
-       -- Отключаем Noclip
-       if noclip then
-           pcall(function()
-               noclip:Disconnect()
-           end)
-           noclip = nil
-       end
-       
-       -- Сбрасываем скорость и прыжок
-       if player.Character and player.Character:FindFirstChild("Humanoid") then
-           player.Character.Humanoid.WalkSpeed = 16
-           player.Character.Humanoid.JumpPower = 50
-       end
-       
-       -- Сбрасываем освещение
-       game.Lighting.Brightness = 1
-       game.Lighting.GlobalShadows = true
-       game.Lighting.FogStart = 0
-       game.Lighting.Ambient = Color3.fromRGB(128, 128, 128)
-       game.Workspace.Gravity = 196.2
-       
-       -- Удаляем подсветку (Highlight)
-       for _, pl in pairs(game.Players:GetPlayers()) do
-           if pl.Character then
-               for _, part in pairs(pl.Character:GetDescendants()) do
-                   if part:IsA("BasePart") then
-                       pcall(function()
-                           part.Transparency = 0
-                       end)
-                   end
-                   local highlight = part:FindFirstChild("Highlight")
-                   if highlight then highlight:Destroy() end
-               end
-           end
-       end
-       
-       Rayfield:Notify({Title = "✅ Эффекты", Content = "Все эффекты отключены!", Duration = 3})
-   end
-})
-
--- СЕКЦИЯ: НАСТРОЙКИ RAYFIELD
-local RayfieldSection = SettingsTab:CreateSection("Rayfield Settings")
-
--- ИЗМЕНЕНИЕ ЦВЕТА ТЕМЫ RAYFIELD
-SettingsTab:CreateButton({
-   Name = "🎨 Сменить тему Rayfield",
-   Callback = function()
-       local themes = {"Ocean", "Dark", "Light", "Rose", "Midnight", "Forest"}
-       for _, theme in ipairs(themes) do
-           if Rayfield.Theme and Rayfield.Theme.Name ~= theme then
-               Rayfield:SetTheme(theme)
-               Rayfield:Notify({Title = "🎨 Тема", Content = "Изменена на: " .. theme, Duration = 2})
-               break
-           end
-       end
-   end
-})
-
--- РАЗМЕР ИНТЕРФЕЙСА
-SettingsTab:CreateSlider({
-   Name = "📐 Размер интерфейса",
-   Range = {0.5, 1.5},
-   Increment = 0.05,
-   CurrentValue = 1,
-   Flag = "ui_scale",
-   Callback = function(value)
-       local mainGui = player.PlayerGui:FindFirstChild("Rayfield")
-       if mainGui then
-           local scale = mainGui:FindFirstChild("UIScale")
-           if not scale then
-               scale = Instance.new("UIScale")
-               scale.Parent = mainGui
-           end
-           scale.Scale = value
-       end
-   end
-})
-
--- СЕКЦИЯ: СЧЁТЧИК FPS
-local fpsSection = SettingsTab:CreateSection("FPS Counter")
-
-local fpsEnabled = false
-local fpsLabel = nil
-
-local function createFPS()
-    if fpsLabel then
-        fpsLabel:Destroy()
-        fpsLabel = nil
-    end
-    
-    fpsLabel = Instance.new("TextLabel", player.PlayerGui)
-    fpsLabel.Size = UDim2.new(0, 60, 0, 20)
-    fpsLabel.Position = UDim2.new(1, -70, 0, 10)
-    fpsLabel.BackgroundTransparency = 1
-    fpsLabel.Text = "FPS: 0"
-    fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-    fpsLabel.TextSize = 14
-    fpsLabel.Font = Enum.Font.GothamBold
-    fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
-    fpsLabel.ZIndex = 999
-    
-    local count = 0
-    local time = tick()
-    
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if not fpsEnabled then
-            if fpsLabel then fpsLabel:Destroy() end
-            return
-        end
-        count = count + 1
-        if tick() - time >= 1 then
-            fpsLabel.Text = "FPS: " .. count
-            count = 0
-            time = tick()
-        end
-    end)
-end
-
-local fpsToggle = SettingsTab:CreateToggle({
-    Name = "📊 Показывать FPS",
-    CurrentValue = false,
-    Flag = "fps_toggle",
-    Callback = function(value)
-        fpsEnabled = value
-        if value then
-            createFPS()
-        else
-            if fpsLabel then
-                fpsLabel:Destroy()
-                fpsLabel = nil
-            end
-        end
-    end
-})
-
--- СЕКЦИЯ: НАСТРОЙКИ ИНТЕРФЕЙСА (ОБНОВЛЕННАЯ)
-local UISection = SettingsTab:CreateSection("UI Settings")
-
--- ИЗМЕНЕНИЕ ЦВЕТА ФОНА МЕНЮ
-local bgColorPicker = SettingsTab:CreateColorPicker({
-    Name = "🎨 Цвет фона меню",
-    Color = Color3.fromRGB(25, 25, 35),
-    Callback = function(Color)
-        local gui = player.PlayerGui:FindFirstChild("TrollMenuGUI")
-        if gui then
-            local frame = gui:FindFirstChild("Frame")
-            if frame then
-                frame.BackgroundColor3 = Color
-            end
-        end
-    end
-})
-
--- ПРОЗРАЧНОСТЬ МЕНЮ
-local transparencySlider = SettingsTab:CreateSlider({
-    Name = "🔲 Прозрачность меню",
-    Range = {0, 1},
-    Increment = 0.05,
-    CurrentValue = 0.15,
-    Flag = "menu_transparency",
-    Callback = function(value)
-        local gui = player.PlayerGui:FindFirstChild("TrollMenuGUI")
-        if gui then
-            local frame = gui:FindFirstChild("Frame")
-            if frame then
-                frame.BackgroundTransparency = value
-            end
-        end
-    end
-})
-
--- ТЕМА (СВЕТЛАЯ/ТЁМНАЯ)
-local themeBtn = SettingsTab:CreateButton({
-   Name = "🌓 Сменить тему (тёмная/светлая)",
-   Callback = function()
-       local gui = player.PlayerGui:FindFirstChild("TrollMenuGUI")
-       if gui then
-           local frame = gui:FindFirstChild("Frame")
-           if frame then
-               if frame.BackgroundColor3 == Color3.fromRGB(25, 25, 35) then
-                   frame.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
-                   frame.BackgroundTransparency = 0.3
-               else
-                   frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-                   frame.BackgroundTransparency = 0.15
-               end
-           end
-       end
-   end
-})
-
--- СЕКЦИЯ: ГОРЯЧИЕ КЛАВИШИ
-local HotkeysSection = SettingsTab:CreateSection("Hotkeys")
-
-SettingsTab:CreateButton({
-   Name = "⌨️ Назначить горячую клавишу для меню",
-   Callback = function()
-       Rayfield:Notify({Title = "Горячая клавиша", Content = "Нажми любую клавишу (только ПК)", Duration = 3})
-       local input = game:GetService("UserInputService").InputBegan:Wait()
-       local key = input.KeyCode.Name
-       print("Назначена клавиша: " .. key)
-       Rayfield:Notify({Title = "Горячая клавиша", Content = "Назначена клавиша: " .. key, Duration = 3})
-   end
-})
-
--- СЕКЦИЯ: ИНФОРМАЦИЯ
-local InfoSection = SettingsTab:CreateSection("Info")
-
-SettingsTab:CreateLabel("👤 Разработчик: @HelloGidra")
-SettingsTab:CreateLabel("📱 Версия: 2.0")
-SettingsTab:CreateLabel("💬 Telegram: https://t.me/HelloGidra")
-
-SettingsTab:CreateButton({
-   Name = "📋 Скопировать Telegram",
-   Callback = function()
-       setclipboard("https://t.me/HelloGidra")
-       Rayfield:Notify({Title = "📋 Ссылка скопирована", Content = "Telegram: @HelloGidra", Duration = 3})
-   end
-})
-
-SettingsTab:CreateButton({
-   Name = "🔄 Перезагрузить Rayfield",
-   Callback = function()
-       Rayfield:Destroy()
-       task.wait(0.5)
-       loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-       Rayfield:Notify({Title = "🔄 Перезагрузка", Content = "Интерфейс перезагружен!", Duration = 3})
-   end
 })
