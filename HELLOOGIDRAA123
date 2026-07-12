@@ -451,27 +451,27 @@ local Window = Rayfield:CreateWindow({
    Theme = "Ocean",
    ConfigurationSaving = {
       Enabled = false,
-      FolderName = nil, -- Create a custom folder for your hub/game
+      FolderName = nil,
       FileName = "HelloGidraHub"
    },
    Discord = {
       Enabled = false,
-      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
-      RememberJoins = false -- Set this to false to make them join the discord every time they load it up
+      Invite = "noinvitelink",
+      RememberJoins = false
    },
-   KeySystem = false, -- Set this to true to use our key system
+   KeySystem = false,
    KeySettings = {
       Title = "Aftermath Key System | рџЋ„",
       Subtitle = "РїСЂСѓС„Р°РЅРё С‡С‚Рѕ С‚С‹ РЅРµ С„Р°РЅС‚РѕРј ))0)",
       Note = "РєР»СЋС‡ С‚РѕР»СЊРєРѕ РґР»СЏ РїРѕР»РёСЃРјРµРЅРѕРІ",
-      FileName = "ScriptHubKey1", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
-      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-      GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-      Key = {"https://pastebin.com/raw/texBrQXF"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+      FileName = "ScriptHubKey1",
+      SaveKey = true,
+      GrabKeyFromSite = true,
+      Key = {"https://pastebin.com/raw/texBrQXF"}
    }
 })
 
-local ABOUTTab = Window:CreateTab("Home", nil) -- Title, Image
+local ABOUTTab = Window:CreateTab("Home", nil)
 local ABOUTSection = ABOUTTab:CreateSection("About script")
 
 Rayfield:Notify({
@@ -479,7 +479,7 @@ Rayfield:Notify({
    Content = "Welcome to the @HelloGidra hub",
    Duration = 5,
    Image = nil,
-   Actions = { -- Notification Buttons
+   Actions = {
       Ignore = {
          Name = "Okay!",
          Callback = function()
@@ -507,7 +507,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderws", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "sliderws",
    Callback = function(Value)
         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = (Value)
    end,
@@ -519,7 +519,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderjp", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "sliderjp",
    Callback = function(Value)
         game.Players.LocalPlayer.Character.Humanoid.JumpPower = (Value)
    end,
@@ -531,7 +531,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderjp", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "sliderjp",
    Callback = function(Value)
         game.Workspace.Gravity = (Value)
    end,
@@ -636,42 +636,102 @@ local Toggle = FuncTab:CreateToggle({
 	end,
 })
 
--- INFINITE JUMP УДАЛЁН НАХУЙ
-
--- CHAMS (БАЗОВЫЙ ЦВЕТ ЗАВИСИТ ОТ КОМАНДЫ)
+-- ============================================
+-- CHAMS + ВЫДЕЛЕНИЕ ИГРОКОВ (С ПРИОРИТЕТОМ)
+-- ============================================
 local chamsConnection = nil
-local highlightConnections = {} -- для хранения подключений
+local chamsEnabled = false
+local highlightEnabled = false
 
 -- НАСТРОЙКИ CHAMS
 local chamsSettings = {
-    EnemyColor = Color3.fromRGB(255, 0, 0),   -- КРАСНЫЙ ДЛЯ ВРАГОВ
-    TeamColor = Color3.fromRGB(0, 0, 255),    -- СИНИЙ ДЛЯ СОЮЗНИКОВ
+    EnemyColor = Color3.fromRGB(255, 0, 0),
+    TeamColor = Color3.fromRGB(0, 0, 255),
     Transparency = 0.5
 }
 
--- НАСТРОЙКИ ВЫДЕЛЕНИЯ ИГРОКОВ (МНОЖЕСТВЕННЫЙ ВЫБОР)
+-- НАСТРОЙКИ ВЫДЕЛЕНИЯ ИГРОКОВ
 local playerHighlightSettings = {
     Enabled = false,
-    SelectedPlayers = {}, -- ТЕПЕРЬ ЭТО ТАБЛИЦА С ИМЕНАМИ
-    Color = Color3.fromRGB(255, 255, 0) -- ЖЕЛТЫЙ ПО УМОЛЧАНИЮ
+    SelectedPlayers = {},
+    Color = Color3.fromRGB(255, 255, 0)
 }
 
--- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СПИСКА ИГРОКОВ
-local function updatePlayerList()
-    local playerNames = {}
+-- ФУНКЦИЯ ОЧИСТКИ ВСЕХ ХАЙЛАЙТОВ
+local function clearAllHighlights()
     for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player then
-            table.insert(playerNames, pl.Name)
+        if pl ~= player and pl.Character then
+            for _, part in pairs(pl.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if part:GetAttribute("highlighted") then
+                        local highlight = part:FindFirstChild("Highlight")
+                        if highlight then highlight:Destroy() end
+                        part:SetAttribute("highlighted", nil)
+                    end
+                    if part:GetAttribute("highlighted_player") then
+                        local highlight = part:FindFirstChild("Highlight")
+                        if highlight then highlight:Destroy() end
+                        part:SetAttribute("highlighted_player", nil)
+                    end
+                end
+            end
         end
     end
-    return playerNames
 end
 
--- ФУНКЦИЯ ДЛЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ
-local function applyPlayerHighlight(character, color)
-    if not character then return end
+-- ФУНКЦИЯ ПРИМЕНЕНИЯ CHAMS
+local function applyChamsToCharacter(character)
+    if not character or character == player.Character then return end
+    if not chamsEnabled then return end
+    
+    local isEnemy = true
+    local pl = game.Players:GetPlayerFromCharacter(character)
+    if pl and pl.Team == player.Team and pl.Team ~= nil then
+        isEnemy = false
+    end
+    
+    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
+    
+    -- Проверяем, есть ли уже выделение игрока (приоритет)
+    local hasPlayerHighlight = false
+    if highlightEnabled and playerHighlightSettings.SelectedPlayers then
+        local playerName = pl and pl.Name or ""
+        for _, name in ipairs(playerHighlightSettings.SelectedPlayers) do
+            if name == playerName then
+                hasPlayerHighlight = true
+                break
+            end
+        end
+    end
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            -- Если есть выделение игрока — пропускаем CHAMS
+            if hasPlayerHighlight and part:GetAttribute("highlighted_player") then
+                continue
+            end
+            
+            -- Если нет выделения — накладываем CHAMS
+            if not part:FindFirstChild("Highlight") and not hasPlayerHighlight then
+                local highlight = Instance.new("Highlight")
+                highlight.Parent = part
+                highlight.Adornee = part
+                highlight.FillColor = color
+                highlight.FillTransparency = chamsSettings.Transparency
+                highlight.OutlineColor = color
+                highlight.OutlineTransparency = 0.2
+                part:SetAttribute("highlighted", true)
+            end
+        end
+    end
+end
 
-    -- Удаляем старые хайлайты
+-- ФУНКЦИЯ ПРИМЕНЕНИЯ ВЫДЕЛЕНИЯ ИГРОКА
+local function applyPlayerHighlightToCharacter(character, color)
+    if not character or character == player.Character then return end
+    if not highlightEnabled then return end
+    
+    -- Сначала очищаем старые выделения
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
             local highlight = part:FindFirstChild("Highlight")
@@ -679,10 +739,8 @@ local function applyPlayerHighlight(character, color)
             part:SetAttribute("highlighted_player", nil)
         end
     end
-
-    if not playerHighlightSettings.Enabled or not color then return end
-
-    -- Наносим новый хайлайт
+    
+    -- Накладываем новое выделение
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
             local highlight = Instance.new("Highlight")
@@ -697,65 +755,135 @@ local function applyPlayerHighlight(character, color)
     end
 end
 
--- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ ВЫДЕЛЕНИЯ ВСЕХ ИГРОКОВ
-local function updateAllPlayerHighlights()
-    -- Сначала очищаем все выделения
-    for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player and pl.Character then
-            for _, part in pairs(pl.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
-                    local highlight = part:FindFirstChild("Highlight")
-                    if highlight then highlight:Destroy() end
-                    part:SetAttribute("highlighted_player", nil)
-                end
+-- ОБНОВЛЕНИЕ ВСЕХ ВЫДЕЛЕНИЙ
+local function updateAllHighlights()
+    clearAllHighlights()
+    
+    -- Сначала накладываем CHAMS на всех
+    if chamsEnabled then
+        for _, pl in pairs(game.Players:GetPlayers()) do
+            if pl ~= player and pl.Character then
+                applyChamsToCharacter(pl.Character)
             end
         end
     end
-
-    -- Применяем выделение для всех выбранных игроков
-    if playerHighlightSettings.Enabled and #playerHighlightSettings.SelectedPlayers > 0 then
+    
+    -- Затем поверх — выделение выбранных игроков
+    if highlightEnabled then
         for _, playerName in ipairs(playerHighlightSettings.SelectedPlayers) do
             local targetPlayer = game.Players:FindFirstChild(playerName)
             if targetPlayer and targetPlayer.Character then
-                applyPlayerHighlight(targetPlayer.Character, playerHighlightSettings.Color)
+                -- Удаляем CHAMS с этого игрока
+                for _, part in pairs(targetPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                        local highlight = part:FindFirstChild("Highlight")
+                        if highlight then highlight:Destroy() end
+                        part:SetAttribute("highlighted", nil)
+                    end
+                end
+                -- Накладываем выделение
+                applyPlayerHighlightToCharacter(targetPlayer.Character, playerHighlightSettings.Color)
             end
         end
     end
 end
 
--- ТОГГЛ ВКЛЮЧЕНИЯ ВЫДЕЛЕНИЯ
+-- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СПИСКА ИГРОКОВ
+local function updatePlayerList()
+    local playerNames = {}
+    for _, pl in pairs(game.Players:GetPlayers()) do
+        if pl ~= player then
+            table.insert(playerNames, pl.Name)
+        end
+    end
+    return playerNames
+end
+
+-- ТОГГЛ CHAMS
+local chamsToggle = FuncTab:CreateToggle({
+    Name = "CHAMS (Командные цвета)",
+    CurrentValue = false,
+    Flag = "chams_toggle",
+    Callback = function(value)
+        chamsEnabled = value
+        toggles.chams = value
+        if value then
+            -- Подключаем события для новых игроков
+            chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
+                newPlayer.CharacterAdded:Connect(function(character)
+                    task.wait(0.5)
+                    updateAllHighlights()
+                end)
+            end)
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player then
+                    pl.CharacterAdded:Connect(function(character)
+                        task.wait(0.5)
+                        updateAllHighlights()
+                    end)
+                end
+            end
+        else
+            if chamsConnection then
+                chamsConnection:Disconnect()
+                chamsConnection = nil
+            end
+        end
+        updateAllHighlights()
+    end
+})
+
+-- НАСТРОЙКА ЦВЕТА ВРАГОВ
+local enemyColorPicker = FuncTab:CreateColorPicker({
+    Name = "Цвет врагов (CHAMS)",
+    Color = chamsSettings.EnemyColor,
+    Callback = function(Color)
+        chamsSettings.EnemyColor = Color
+        if chamsEnabled then updateAllHighlights() end
+    end
+})
+
+-- НАСТРОЙКА ЦВЕТА СОЮЗНИКОВ
+local teamColorPicker = FuncTab:CreateColorPicker({
+    Name = "Цвет союзников (CHAMS)",
+    Color = chamsSettings.TeamColor,
+    Callback = function(Color)
+        chamsSettings.TeamColor = Color
+        if chamsEnabled then updateAllHighlights() end
+    end
+})
+
+local transparencySlider = FuncTab:CreateSlider({
+    Name = "CHAMS Transparency",
+    Range = {0, 1},
+    Increment = 0.05,
+    CurrentValue = chamsSettings.Transparency,
+    Flag = "chams_transparency",
+    Callback = function(value)
+        chamsSettings.Transparency = value
+        if chamsEnabled then updateAllHighlights() end
+    end
+})
+
+-- ТОГГЛ ВЫДЕЛЕНИЯ ИГРОКОВ
 local highlightToggle = FuncTab:CreateToggle({
     Name = "Выделение игроков",
     CurrentValue = false,
     Flag = "highlight_toggle",
     Callback = function(value)
-        toggles.highlight = value
+        highlightEnabled = value
         playerHighlightSettings.Enabled = value
-        if not value then
-            -- Очищаем все выделения при выключении
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    for _, part in pairs(pl.Character:GetDescendants()) do
-                        if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
-                            local highlight = part:FindFirstChild("Highlight")
-                            if highlight then highlight:Destroy() end
-                            part:SetAttribute("highlighted_player", nil)
-                        end
-                    end
-                end
-            end
-        else
-            updateAllPlayerHighlights()
-        end
+        toggles.highlight = value
+        updateAllHighlights()
     end
 })
 
--- ДРОПДАУН СО СПИСКОМ ИГРОКОВ (ТЕПЕРЬ МНОЖЕСТВЕННЫЙ ВЫБОР)
+-- ДРОПДАУН СО СПИСКОМ ИГРОКОВ
 local playerDropdown = FuncTab:CreateDropdown({
     Name = "Выберите игроков",
     Options = updatePlayerList(),
     CurrentOption = {},
-    MultipleOptions = true, -- ВКЛЮЧАЕМ МНОЖЕСТВЕННЫЙ ВЫБОР
+    MultipleOptions = true,
     Flag = "player_select",
     Callback = function(option)
         if type(option) == "table" then
@@ -763,7 +891,7 @@ local playerDropdown = FuncTab:CreateDropdown({
         else
             playerHighlightSettings.SelectedPlayers = {option}
         end
-        updateAllPlayerHighlights()
+        updateAllHighlights()
     end
 })
 
@@ -776,7 +904,6 @@ end)
 game.Players.PlayerRemoving:Connect(function()
     local newOptions = updatePlayerList()
     playerDropdown:Refresh(newOptions, {})
-    -- Удаляем выбывших игроков из списка выбранных
     local updatedList = {}
     for _, name in ipairs(playerHighlightSettings.SelectedPlayers) do
         if game.Players:FindFirstChild(name) then
@@ -784,7 +911,7 @@ game.Players.PlayerRemoving:Connect(function()
         end
     end
     playerHighlightSettings.SelectedPlayers = updatedList
-    updateAllPlayerHighlights()
+    updateAllHighlights()
 end)
 
 -- ЦВЕТ ПИКЕР ДЛЯ ВЫДЕЛЕННОГО ИГРОКА
@@ -793,181 +920,23 @@ local highlightColorPicker = FuncTab:CreateColorPicker({
     Color = playerHighlightSettings.Color,
     Callback = function(Color)
         playerHighlightSettings.Color = Color
-        updateAllPlayerHighlights()
+        updateAllHighlights()
     end
 })
 
--- СЛЕДИМ ЗА ПОЯВЛЕНИЕМ ХАРАКТЕРОВ У ИГРОКОВ
+-- СЛЕДИМ ЗА ПОЯВЛЕНИЕМ ХАРАКТЕРОВ
 for _, pl in pairs(game.Players:GetPlayers()) do
     if pl ~= player then
         pl.CharacterAdded:Connect(function(character)
             task.wait(0.5)
-            if playerHighlightSettings.Enabled and table.find(playerHighlightSettings.SelectedPlayers, pl.Name) then
-                applyPlayerHighlight(character, playerHighlightSettings.Color)
-            end
+            updateAllHighlights()
         end)
     end
 end
 
--- CHAMS ТОГГЛ (ОСТАВЛЯЕМ КАК БЫЛО)
-local chamsToggle = FuncTab:CreateToggle({
-    Name = "CHAMS (Командные цвета)",
-    CurrentValue = false,
-    Flag = "chams_toggle",
-    Callback = function(value)
-        toggles.chams = value
-        if value then
-            local function applyChams(character)
-                if character and character ~= player.Character then
-                    -- Определяем, враг или союзник
-                    local isEnemy = true
-                    local pl = game.Players:GetPlayerFromCharacter(character)
-                    if pl and pl.Team == player.Team and pl.Team ~= nil then
-                        isEnemy = false
-                    end
-
-                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
-
-                    for _, part in pairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
-                            local highlight = Instance.new("Highlight")
-                            highlight.Parent = part
-                            highlight.Adornee = part
-                            highlight.FillColor = color
-                            highlight.FillTransparency = chamsSettings.Transparency
-                            highlight.OutlineColor = color
-                            highlight.OutlineTransparency = 0.2
-                            part:SetAttribute("highlighted", true)
-                        end
-                    end
-                end
-            end
-
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    applyChams(pl.Character)
-                end
-            end
-
-            chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
-                newPlayer.CharacterAdded:Connect(function(character)
-                    task.wait(0.5)
-                    applyChams(character)
-                end)
-            end)
-
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player then
-                    pl.CharacterAdded:Connect(function(character)
-                        task.wait(0.5)
-                        applyChams(character)
-                    end)
-                end
-            end
-
-        else
-            if chamsConnection then
-                chamsConnection:Disconnect()
-                chamsConnection = nil
-            end
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    for _, part in pairs(pl.Character:GetDescendants()) do
-                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-                            local highlight = part:FindFirstChild("Highlight")
-                            if highlight then highlight:Destroy() end
-                            part:SetAttribute("highlighted", nil)
-                        end
-                    end
-                end
-            end
-        end
-    end
-})
-
--- НАСТРОЙКА ЦВЕТА ВРАГОВ
-local enemyColorPicker = FuncTab:CreateColorPicker({
-    Name = "Цвет врагов (CHAMS)",
-    Color = chamsSettings.EnemyColor,
-    Callback = function(Color)
-        chamsSettings.EnemyColor = Color
-        if chamsToggle.CurrentValue then
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    local isEnemy = true
-                    if pl.Team == player.Team and pl.Team ~= nil then
-                        isEnemy = false
-                    end
-                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
-                    for _, part in pairs(pl.Character:GetDescendants()) do
-                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-                            local highlight = part:FindFirstChild("Highlight")
-                            if highlight then
-                                highlight.FillColor = color
-                                highlight.OutlineColor = color
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-})
-
--- НАСТРОЙКА ЦВЕТА СОЮЗНИКОВ
-local teamColorPicker = FuncTab:CreateColorPicker({
-    Name = "Цвет союзников (CHAMS)",
-    Color = chamsSettings.TeamColor,
-    Callback = function(Color)
-        chamsSettings.TeamColor = Color
-        if chamsToggle.CurrentValue then
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    local isEnemy = true
-                    if pl.Team == player.Team and pl.Team ~= nil then
-                        isEnemy = false
-                    end
-                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
-                    for _, part in pairs(pl.Character:GetDescendants()) do
-                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-                            local highlight = part:FindFirstChild("Highlight")
-                            if highlight then
-                                highlight.FillColor = color
-                                highlight.OutlineColor = color
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-})
-
-local transparencySlider = FuncTab:CreateSlider({
-    Name = "CHAMS Transparency",
-    Range = {0, 1},
-    Increment = 0.05,
-    CurrentValue = chamsSettings.Transparency,
-    Flag = "chams_transparency",
-    Callback = function(value)
-        chamsSettings.Transparency = value
-        if chamsToggle.CurrentValue then
-            for _, pl in pairs(game.Players:GetPlayers()) do
-                if pl ~= player and pl.Character then
-                    for _, part in pairs(pl.Character:GetDescendants()) do
-                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-                            local highlight = part:FindFirstChild("Highlight")
-                            if highlight then
-                                highlight.FillTransparency = value
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-})
-
+-- ============================================
+-- ОСТАЛЬНОЙ КОД (AIMBOT, ANTI-AIM, SPIN-BOT И Т.Д.)
+-- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
 local selectedViewPlayer = nil
@@ -1391,7 +1360,7 @@ local Slider = OtherTab:CreateSlider({
    Increment = 0.01,
    Suffix = "Resolution",
    CurrentValue = 1.00,
-   Flag = "slidersr", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "slidersr",
    Callback = function(Value)
         getgenv().Resolution = {
     [".gg/scripters"] = (Value)
@@ -1626,7 +1595,7 @@ local Slider = CameraTab:CreateSlider({
    Increment = 1,
    Suffix = "field of view",
    CurrentValue = 70,
-   Flag = "sliderfov", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "sliderfov",
    Callback = function(value)
         tweenService:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), { FieldOfView = value }):Play()
    end,
@@ -1773,7 +1742,6 @@ local menuColorPicker = SettingsTab:CreateColorPicker({
     Name = "Цвет меню",
     Color = Color3.fromRGB(30, 30, 30),
     Callback = function(Color)
-        -- Меняем цвет фона окон Rayfield
         for _, gui in pairs(game.CoreGui:GetDescendants()) do
             if gui:IsA("Frame") and gui.Name == "MainFrame" then
                 gui.BackgroundColor3 = Color
@@ -1783,7 +1751,7 @@ local menuColorPicker = SettingsTab:CreateColorPicker({
 })
 
 -- Прозрачность меню
-local transparencySlider = SettingsTab:CreateSlider({
+local menuTransparencySlider = SettingsTab:CreateSlider({
     Name = "Прозрачность меню",
     Range = {0, 1},
     Increment = 0.05,
@@ -1805,7 +1773,6 @@ local themeDropdown = SettingsTab:CreateDropdown({
     CurrentOption = "Ocean",
     Flag = "rayfield_theme",
     Callback = function(option)
-        -- Rayfield не имеет встроенной смены темы, но мы можем изменить цвет вручную
         local colors = {
             Ocean = Color3.fromRGB(0, 119, 255),
             Dark = Color3.fromRGB(40, 40, 40),
@@ -1836,27 +1803,14 @@ local disableAllButton = SettingsTab:CreateButton({
         -- Отключаем ESP
         Sense.Unload()
         
-        -- Отключаем CHAMS
+        -- Отключаем CHAMS и выделение
+        chamsEnabled = false
+        highlightEnabled = false
         if chamsConnection then
             chamsConnection:Disconnect()
             chamsConnection = nil
         end
-        for _, pl in pairs(game.Players:GetPlayers()) do
-            if pl ~= player and pl.Character then
-                for _, part in pairs(pl.Character:GetDescendants()) do
-                    if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-                        local highlight = part:FindFirstChild("Highlight")
-                        if highlight then highlight:Destroy() end
-                        part:SetAttribute("highlighted", nil)
-                    end
-                    if part:IsA("BasePart") and part:GetAttribute("highlighted_player") then
-                        local highlight = part:FindFirstChild("Highlight")
-                        if highlight then highlight:Destroy() end
-                        part:SetAttribute("highlighted_player", nil)
-                    end
-                end
-            end
-        end
+        clearAllHighlights()
         
         -- Отключаем No Clip
         if noclip then
@@ -1917,7 +1871,6 @@ local restartButton = SettingsTab:CreateButton({
             Duration = 2,
         })
         task.wait(1)
-        -- Просто перезагружаем скрипт через loadstring
         loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
     end
 })
