@@ -176,7 +176,6 @@ local predictionStrength = 0.065
 local smoothing = 0.05
 
 local aimbotEnabled = false
-local silentAimEnabled = false
 local wallCheck = true
 local stickyAimEnabled = false
 local teamCheck = false
@@ -221,7 +220,6 @@ local toggles = {
     chams = false,
     highlight = false,
     aimbot = false,
-    silentaim = false,
     fovvisibility = false,
     wallcheck = false,
     stickyaim = false,
@@ -398,55 +396,6 @@ local function aimAt(player, part)
         end
     end
 end
-
--- SILENT AIM ЛОГИКА (БЕЗОПАСНАЯ ВЕРСИЯ)
-local function getSilentTarget()
-    local nearestPlayer = nil
-    local closestPart = nil
-    local shortestCursorDistance = aimFov
-    
-    for _, player in ipairs(players:GetPlayers()) do
-        if player ~= plr and player.Character and not checkTeam(player) then
-            if player.Character.Humanoid.Health >= minHealth or not healthCheck then
-                local targetPart = getClosestPart(player.Character)
-                if targetPart then
-                    local screenPos = camera:WorldToViewportPoint(targetPart.Position)
-                    local cursorDistance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-                    
-                    if cursorDistance < shortestCursorDistance then
-                        if not wallCheck or not checkWall(player.Character) then
-                            shortestCursorDistance = cursorDistance
-                            nearestPlayer = player
-                            closestPart = targetPart
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return nearestPlayer, closestPart
-end
-
--- БЕЗОПАСНЫЙ SILENT AIM ЧЕРЕЗ МЫШЬ
-local function onMouseClick()
-    if not silentAimEnabled then return end
-    
-    local target, targetPart = getSilentTarget()
-    if target and targetPart then
-        local predictedPos = predict(target, targetPart)
-        if predictedPos then
-            -- Просто поворачиваем камеру на долю секунды (незаметно)
-            local oldCFrame = camera.CFrame
-            local newCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-            camera.CFrame = newCFrame
-            task.wait(0.01)
-            camera.CFrame = oldCFrame
-        end
-    end
-end
-
-mouse.Button1Down:Connect(onMouseClick)
 
 RunService.RenderStepped:Connect(function()
     if aimbotEnabled then
@@ -1032,7 +981,7 @@ for _, pl in pairs(game.Players:GetPlayers()) do
 end
 
 -- ============================================
--- AIMBOT + SILENT AIM
+-- AIMBOT
 -- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
@@ -1079,37 +1028,13 @@ local function findPlayerByPartialNameOrNickname(partialName)
 end
 
 local aimbot = FuncTab:CreateToggle({
-    Name = "Aimbot (камера)",
+    Name = "Aimbot",
     CurrentValue = false,
     Flag = "Aimbot",
     Callback = function(Value)
         toggles.aimbot = Value
         aimbotEnabled = Value
         fovCircle.Visible = Value
-    end
-})
-
--- SILENT AIM ТОГГЛ
-local silentAimToggle = FuncTab:CreateToggle({
-    Name = "Silent Aim (невидимый)",
-    CurrentValue = false,
-    Flag = "SilentAim",
-    Callback = function(Value)
-        toggles.silentaim = Value
-        silentAimEnabled = Value
-        if Value then
-            Rayfield:Notify({
-                Title = "Silent Aim",
-                Content = "Включён! Стреляй в любую сторону",
-                Duration = 2,
-            })
-        else
-            Rayfield:Notify({
-                Title = "Silent Aim",
-                Content = "Выключен",
-                Duration = 2,
-            })
-        end
     end
 })
 
@@ -1892,7 +1817,6 @@ local disableAllButton = SettingsTab:CreateButton({
         end
         
         aimbotEnabled = false
-        silentAimEnabled = false
         fovCircle.Visible = false
         
         antiAim = false
