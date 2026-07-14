@@ -688,7 +688,9 @@ local Toggle = FuncTab:CreateToggle({
 	end,
 })
 
--- CHAMS (БАЗОВЫЙ ЦВЕТ ЗАВИСИТ ОТ КОМАНДЫ)
+-- ============================================
+-- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ БЕЗ ВЫДЕЛЕНИЯ)
+-- ============================================
 local chamsConnection = nil
 local chamsEnabled = false
 
@@ -742,6 +744,7 @@ end
 -- ОБНОВЛЕНИЕ ВСЕХ CHAMS
 local function updateAllChams()
     if not chamsEnabled then
+        -- Если CHAMS выключены — очищаем всё
         for _, pl in pairs(game.Players:GetPlayers()) do
             if pl ~= player and pl.Character then
                 clearChams(pl.Character)
@@ -750,9 +753,10 @@ local function updateAllChams()
         return
     end
     
+    -- Включаем CHAMS
     for _, pl in pairs(game.Players:GetPlayers()) do
         if pl ~= player and pl.Character then
-            clearChams(pl.Character)
+            clearChams(pl.Character) -- Очищаем перед наложением
             applyChams(pl.Character)
         end
     end
@@ -767,6 +771,7 @@ local chamsToggle = FuncTab:CreateToggle({
         chamsEnabled = value
         toggles.chams = value
         if value then
+            -- Подписываемся на новых игроков
             chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function(character)
                     task.wait(0.5)
@@ -824,7 +829,9 @@ local transparencySlider = FuncTab:CreateSlider({
     end
 })
 
+-- ============================================
 -- AIMBOT
+-- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
 local selectedViewPlayer = nil
@@ -1171,7 +1178,7 @@ loadstring(game:HttpGet("https://pastebin.com/raw/sAVghM5x"))()
    end,
 })
 
--- НОВАЯ ВКЛАДКА "Other Scripts"
+-- Other Scripts
 local OtherScriptsTab = Window:CreateTab("Other Scripts", "file-code-2")
 local OtherSection = OtherScriptsTab:CreateSection("Other Scripts")
 
@@ -1243,7 +1250,7 @@ loadstring(game:HttpGet("https://pastebin.com/raw/gvUFpwQw"))()
 })
 
 local Slider = OtherTab:CreateSlider({
-   Name = "Stretched Resolution (растег экрана)",
+   Name = "Stretched Resolution",
    Range = {0.01, 1.00},
    Increment = 0.01,
    Suffix = "Resolution",
@@ -1281,7 +1288,7 @@ loadstring(game:HttpGet('https://pastefy.app/S7xNJSXX/raw'))()execute("Script14"
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "Big Jump Button (works on mobile, tablet have errors)",
+   Name = "Big Jump Button",
    Callback = function()
 loadstring(game:HttpGet("https://pastebin.com/raw/p3TfEqQ2"))()
    end,
@@ -1301,7 +1308,7 @@ local Toggle = OtherTab:CreateToggle({
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "B tools (visual lol)",
+   Name = "B tools",
    Callback = function()
 loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/BTools.txt"))()
    end,
@@ -1353,7 +1360,7 @@ local Toggle = OtherTab:CreateToggle({
 			elseif num==6 then
 				text='ezzzzz win by antioder hub'
 			end
-			if game.PlaceId==286090429 then -- If arsenal
+			if game.PlaceId==286090429 then
 				local args = {
 				    [1] = "Hah!",
 				    [2] = text,
@@ -1712,8 +1719,3 @@ local restartButton = SettingsTab:CreateButton({
             Title = "🔄 Перезагрузка...",
             Content = "Скрипт будет перезагружен",
             Duration = 2,
-        })
-        task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
-    end
-})
