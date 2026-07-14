@@ -232,107 +232,8 @@ local toggles = {
     fullbrightness = false,
     autoez = false,
     antiafk = false,
-    fpscounter = false,
-    hitmarker = true
+    fpscounter = false
 }
-
--- ============================================
--- ПРОСТОЙ HITMARKER (без багов)
--- ============================================
-local hitmarkerEnabled = true
-local hitmarkerSound = nil
-local hitmarkerLines = {}
-
--- Создаём хитмаркер
-local function createHitmarker()
-    for _, line in pairs(hitmarkerLines) do
-        line:Remove()
-    end
-    hitmarkerLines = {}
-    
-    local size = 15
-    local thickness = 2
-    local centerX = camera.ViewportSize.X / 2
-    local centerY = camera.ViewportSize.Y / 2
-    
-    -- 4 линии крестика
-    for i = 1, 4 do
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Color = Color3.fromRGB(255, 255, 255)
-        line.Thickness = thickness
-        table.insert(hitmarkerLines, line)
-    end
-    
-    -- Настройка позиций
-    hitmarkerLines[1].From = Vector2.new(centerX - size, centerY - size)
-    hitmarkerLines[1].To = Vector2.new(centerX - size/3, centerY - size/3)
-    
-    hitmarkerLines[2].From = Vector2.new(centerX + size, centerY - size)
-    hitmarkerLines[2].To = Vector2.new(centerX + size/3, centerY - size/3)
-    
-    hitmarkerLines[3].From = Vector2.new(centerX - size, centerY + size)
-    hitmarkerLines[3].To = Vector2.new(centerX - size/3, centerY + size/3)
-    
-    hitmarkerLines[4].From = Vector2.new(centerX + size, centerY + size)
-    hitmarkerLines[4].To = Vector2.new(centerX + size/3, centerY + size/3)
-end
-
--- Показать хитмаркер
-local function showHitmarker()
-    if not hitmarkerEnabled then return end
-    
-    for _, line in pairs(hitmarkerLines) do
-        line.Visible = true
-    end
-    
-    task.spawn(function()
-        task.wait(0.2)
-        for _, line in pairs(hitmarkerLines) do
-            line.Visible = false
-        end
-    end)
-end
-
--- Звук
-local function playHitSound()
-    if not hitmarkerEnabled then return end
-    if not hitmarkerSound then
-        hitmarkerSound = Instance.new("Sound")
-        hitmarkerSound.Parent = game.Workspace
-        hitmarkerSound.Volume = 0.3
-        hitmarkerSound.SoundId = "rbxassetid://138164109"
-    end
-    hitmarkerSound:Play()
-end
-
--- Создаём при запуске
-createHitmarker()
-
--- ОТСЛЕЖИВАНИЕ УРОНА (ПРОСТОЙ СПОСОБ)
-local function setupHitDetection()
-    for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player then
-            pl.CharacterAdded:Connect(function(character)
-                task.wait(0.5)
-                local humanoid = character:FindFirstChild("Humanoid")
-                if humanoid then
-                    local lastHealth = humanoid.Health
-                    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                        local newHealth = humanoid.Health
-                        if newHealth < lastHealth and newHealth > 0 then
-                            showHitmarker()
-                            playHitSound()
-                        end
-                        lastHealth = newHealth
-                    end)
-                end
-            end)
-        end
-    end
-end
-
-setupHitDetection()
 
 -- FPS СЧЕТЧИК
 local fpsLabel = nil
@@ -787,16 +688,20 @@ local Toggle = FuncTab:CreateToggle({
 	end,
 })
 
--- CHAMS
+-- ============================================
+-- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ БЕЗ ВЫДЕЛЕНИЯ)
+-- ============================================
 local chamsConnection = nil
 local chamsEnabled = false
 
+-- НАСТРОЙКИ CHAMS
 local chamsSettings = {
     EnemyColor = Color3.fromRGB(255, 0, 0),
     TeamColor = Color3.fromRGB(0, 0, 255),
     Transparency = 0.5
 }
 
+-- ПРИМЕНЕНИЕ CHAMS
 local function applyChams(character)
     if not character or character == player.Character or not chamsEnabled then return end
     
@@ -824,6 +729,7 @@ local function applyChams(character)
     end
 end
 
+-- ОЧИСТКА CHAMS
 local function clearChams(character)
     if not character then return end
     for _, part in pairs(character:GetDescendants()) do
@@ -835,8 +741,10 @@ local function clearChams(character)
     end
 end
 
+-- ОБНОВЛЕНИЕ ВСЕХ CHAMS
 local function updateAllChams()
     if not chamsEnabled then
+        -- Если CHAMS выключены — очищаем всё
         for _, pl in pairs(game.Players:GetPlayers()) do
             if pl ~= player and pl.Character then
                 clearChams(pl.Character)
@@ -845,14 +753,16 @@ local function updateAllChams()
         return
     end
     
+    -- Включаем CHAMS
     for _, pl in pairs(game.Players:GetPlayers()) do
         if pl ~= player and pl.Character then
-            clearChams(pl.Character)
+            clearChams(pl.Character) -- Очищаем перед наложением
             applyChams(pl.Character)
         end
     end
 end
 
+-- ТОГГЛ CHAMS
 local chamsToggle = FuncTab:CreateToggle({
     Name = "CHAMS (Командные цвета)",
     CurrentValue = false,
@@ -861,6 +771,7 @@ local chamsToggle = FuncTab:CreateToggle({
         chamsEnabled = value
         toggles.chams = value
         if value then
+            -- Подписываемся на новых игроков
             chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function(character)
                     task.wait(0.5)
@@ -885,6 +796,7 @@ local chamsToggle = FuncTab:CreateToggle({
     end
 })
 
+-- НАСТРОЙКА ЦВЕТА ВРАГОВ
 local enemyColorPicker = FuncTab:CreateColorPicker({
     Name = "Цвет врагов (CHAMS)",
     Color = chamsSettings.EnemyColor,
@@ -894,6 +806,7 @@ local enemyColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
+-- НАСТРОЙКА ЦВЕТА СОЮЗНИКОВ
 local teamColorPicker = FuncTab:CreateColorPicker({
     Name = "Цвет союзников (CHAMS)",
     Color = chamsSettings.TeamColor,
@@ -903,6 +816,7 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
+-- ПРОЗРАЧНОСТЬ CHAMS
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -915,7 +829,9 @@ local transparencySlider = FuncTab:CreateSlider({
     end
 })
 
+-- ============================================
 -- AIMBOT
+-- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
 local selectedViewPlayer = nil
@@ -1710,33 +1626,13 @@ loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
 })
 
 -- ============================================
--- ВКЛАДКА HITMARKER
--- ============================================
-local HitmarkerTab = Window:CreateTab("Hitmarker", "target")
-
-local HitmarkerSection = HitmarkerTab:CreateSection("Настройки")
-
-local hitmarkerToggle = HitmarkerTab:CreateToggle({
-    Name = "Включить Hitmarker",
-    CurrentValue = true,
-    Flag = "hitmarker_toggle",
-    Callback = function(value)
-        hitmarkerEnabled = value
-        if not value then
-            for _, line in pairs(hitmarkerLines) do
-                line.Visible = false
-            end
-        end
-    end
-})
-
--- ============================================
 -- ВКЛАДКА SETTINGS
 -- ============================================
 local SettingsTab = Window:CreateTab("Settings", "settings")
 
 local SettingsSection = SettingsTab:CreateSection("Управление")
 
+-- FPS СЧЕТЧИК
 local fpsToggle = SettingsTab:CreateToggle({
     Name = "Показать FPS",
     CurrentValue = false,
@@ -1746,6 +1642,7 @@ local fpsToggle = SettingsTab:CreateToggle({
     end
 })
 
+-- КНОПКА ОТКЛЮЧЕНИЯ ВСЕГО
 local disableAllButton = SettingsTab:CreateButton({
     Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
     Callback = function()
@@ -1805,7 +1702,6 @@ local disableAllButton = SettingsTab:CreateButton({
         
         autoez = false
         toggleFPS(false)
-        hitmarkerEnabled = false
         
         Rayfield:Notify({
             Title = "❌ Всё отключено!",
@@ -1815,6 +1711,7 @@ local disableAllButton = SettingsTab:CreateButton({
     end
 })
 
+-- Кнопка перезагрузки скрипта
 local restartButton = SettingsTab:CreateButton({
     Name = "🔄 Перезагрузить скрипт",
     Callback = function()
@@ -1822,8 +1719,3 @@ local restartButton = SettingsTab:CreateButton({
             Title = "🔄 Перезагрузка...",
             Content = "Скрипт будет перезагружен",
             Duration = 2,
-        })
-        task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
-    end
-})
