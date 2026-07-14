@@ -210,84 +210,6 @@ fovCircle.Visible = false
 
 local currentTarget = nil
 
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ
-local toggles = {
-    esp = false,
-    boxfill = false,
-    name = false,
-    distance = false,
-    noclip = false,
-    chams = false,
-    aimbot = false,
-    fovvisibility = false,
-    wallcheck = false,
-    stickyaim = false,
-    teamcheck = false,
-    healthcheck = false,
-    circlerainbow = false,
-    antiaim = false,
-    spinbot = false,
-    pinkglasses = false,
-    removefog = false,
-    fullbrightness = false,
-    autoez = false,
-    antiafk = false,
-    fpscounter = false
-}
-
--- FPS СЧЕТЧИК
-local fpsLabel = nil
-local fpsConnection = nil
-
-local function toggleFPS(value)
-    toggles.fpscounter = value
-    if value then
-        if not fpsLabel then
-            fpsLabel = Drawing.new("Text")
-            fpsLabel.Visible = true
-            fpsLabel.Color = Color3.fromRGB(0, 255, 0)
-            fpsLabel.Size = 18
-            fpsLabel.Center = false
-            fpsLabel.Outline = true
-            fpsLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
-            fpsLabel.Position = Vector2.new(10, 10)
-            fpsLabel.Text = "FPS: 0"
-        end
-        
-        local lastTime = tick()
-        local frameCount = 0
-        
-        fpsConnection = RunService.RenderStepped:Connect(function()
-            frameCount = frameCount + 1
-            local currentTime = tick()
-            if currentTime - lastTime >= 1 then
-                local fps = math.floor(frameCount / (currentTime - lastTime))
-                fpsLabel.Text = "FPS: " .. tostring(fps)
-                frameCount = 0
-                lastTime = currentTime
-                
-                if fps >= 60 then
-                    fpsLabel.Color = Color3.fromRGB(0, 255, 0)
-                elseif fps >= 30 then
-                    fpsLabel.Color = Color3.fromRGB(255, 255, 0)
-                else
-                    fpsLabel.Color = Color3.fromRGB(255, 0, 0)
-                end
-            end
-        end)
-    else
-        if fpsConnection then
-            fpsConnection:Disconnect()
-            fpsConnection = nil
-        end
-        if fpsLabel then
-            fpsLabel.Visible = false
-            fpsLabel:Remove()
-            fpsLabel = nil
-        end
-    end
-end
-
 local function checkTeam(player)
     if teamCheck and player.Team == plr.Team then
         return true
@@ -475,7 +397,7 @@ mouse.Button2Up:Connect(function()
     end
 end)
 
--- SPEED WALK
+-- SPEED WALK (РАБОЧАЯ ВЕРСИЯ БЕЗ INFINITE JUMP)
 mouse.KeyDown:connect(function(i)
     key=i:byte()
     for i,v in {119, 97, 115, 100} do --WASD
@@ -484,6 +406,7 @@ mouse.KeyDown:connect(function(i)
             return
         end
     end
+    -- БЛОК ПРЫЖКА ПОЛНОСТЬЮ УДАЛЁН
 end)
 
 -- CTRL TP
@@ -503,27 +426,27 @@ local Window = Rayfield:CreateWindow({
    Theme = "Ocean",
    ConfigurationSaving = {
       Enabled = false,
-      FolderName = nil,
+      FolderName = nil, -- Create a custom folder for your hub/game
       FileName = "HelloGidraHub"
    },
    Discord = {
       Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = false
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
+      RememberJoins = false -- Set this to false to make them join the discord every time they load it up
    },
-   KeySystem = false,
+   KeySystem = false, -- Set this to true to use our key system
    KeySettings = {
       Title = "Aftermath Key System | рџЋ„",
       Subtitle = "РїСЂСѓС„Р°РЅРё С‡С‚Рѕ С‚С‹ РЅРµ С„Р°РЅС‚РѕРј ))0)",
       Note = "РєР»СЋС‡ С‚РѕР»СЊРєРѕ РґР»СЏ РїРѕР»РёСЃРјРµРЅРѕРІ",
-      FileName = "ScriptHubKey1",
-      SaveKey = true,
-      GrabKeyFromSite = true,
-      Key = {"https://pastebin.com/raw/texBrQXF"}
+      FileName = "ScriptHubKey1", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"https://pastebin.com/raw/texBrQXF"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
    }
 })
 
-local ABOUTTab = Window:CreateTab("Home", nil)
+local ABOUTTab = Window:CreateTab("Home", nil) -- Title, Image
 local ABOUTSection = ABOUTTab:CreateSection("About script")
 
 Rayfield:Notify({
@@ -531,7 +454,7 @@ Rayfield:Notify({
    Content = "Welcome to the @HelloGidra hub",
    Duration = 5,
    Image = nil,
-   Actions = {
+   Actions = { -- Notification Buttons
       Ignore = {
          Name = "Okay!",
          Callback = function()
@@ -559,7 +482,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderws",
+   Flag = "sliderws", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = (Value)
    end,
@@ -571,7 +494,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderjp",
+   Flag = "sliderjp", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
         game.Players.LocalPlayer.Character.Humanoid.JumpPower = (Value)
    end,
@@ -583,7 +506,7 @@ local Slider = MainTab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "sliderjp",
+   Flag = "sliderjp", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
         game.Workspace.Gravity = (Value)
    end,
@@ -602,9 +525,8 @@ local FuncSection = FuncTab:CreateSection("ESP")
 local Toggle = FuncTab:CreateToggle({
    Name = "ESP",
    CurrentValue = false,
-   Flag = "Toggle1",
+   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(value)
-           toggles.esp = value
            if value then
                    Sense.teamSettings.enemy.enabled = true
                    Sense.teamSettings.enemy.box = true
@@ -620,9 +542,8 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Box Fill",
    CurrentValue = false,
-   Flag = "Toggle1",
+   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(value)
-           toggles.boxfill = value
            if value then
                    Sense.teamSettings.enemy.boxFill = true
                    Sense.teamSettings.friendly.boxFill = true    
@@ -636,9 +557,8 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Name",
    CurrentValue = false,
-   Flag = "Toggle1",
+   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(value)
-           toggles.name = value
            if value then
                    Sense.teamSettings.enemy.name = true
                    Sense.teamSettings.friendly.name = true    
@@ -652,9 +572,8 @@ local Toggle = FuncTab:CreateToggle({
 local Toggle = FuncTab:CreateToggle({
    Name = "Distance",
    CurrentValue = false,
-   Flag = "Toggle1",
+   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(value)
-           toggles.distance = value
            if value then
                    Sense.teamSettings.enemy.distance = true
                    Sense.teamSettings.friendly.distance = true    
@@ -672,7 +591,6 @@ local Toggle = FuncTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_noclip",
 	Callback = function(state)
-		toggles.noclip = state
 		if state then
 			noclip=RunService.Stepped:Connect(function()
 				for i,v in pairs(player.Character:GetDescendants()) do
@@ -688,96 +606,63 @@ local Toggle = FuncTab:CreateToggle({
 	end,
 })
 
--- ============================================
--- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ БЕЗ ВЫДЕЛЕНИЯ)
--- ============================================
+-- INFINITE JUMP УДАЛЁН НАХУЙ
+
+-- CHAMS (БАЗОВЫЙ ЦВЕТ ЗАВИСИТ ОТ КОМАНДЫ)
 local chamsConnection = nil
-local chamsEnabled = false
 
 -- НАСТРОЙКИ CHAMS
 local chamsSettings = {
-    EnemyColor = Color3.fromRGB(255, 0, 0),
-    TeamColor = Color3.fromRGB(0, 0, 255),
+    EnemyColor = Color3.fromRGB(255, 0, 0),   -- КРАСНЫЙ ДЛЯ ВРАГОВ
+    TeamColor = Color3.fromRGB(0, 0, 255),    -- СИНИЙ ДЛЯ СОЮЗНИКОВ
     Transparency = 0.5
 }
 
--- ПРИМЕНЕНИЕ CHAMS
-local function applyChams(character)
-    if not character or character == player.Character or not chamsEnabled then return end
-    
-    local pl = game.Players:GetPlayerFromCharacter(character)
-    if not pl then return end
-    
-    local isEnemy = true
-    if pl.Team == player.Team and pl.Team ~= nil then
-        isEnemy = false
-    end
-    
-    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
-    
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
-            local highlight = Instance.new("Highlight")
-            highlight.Parent = part
-            highlight.Adornee = part
-            highlight.FillColor = color
-            highlight.FillTransparency = chamsSettings.Transparency
-            highlight.OutlineColor = color
-            highlight.OutlineTransparency = 0.2
-            part:SetAttribute("highlighted", true)
-        end
-    end
-end
-
--- ОЧИСТКА CHAMS
-local function clearChams(character)
-    if not character then return end
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
-            local highlight = part:FindFirstChild("Highlight")
-            if highlight then highlight:Destroy() end
-            part:SetAttribute("highlighted", nil)
-        end
-    end
-end
-
--- ОБНОВЛЕНИЕ ВСЕХ CHAMS
-local function updateAllChams()
-    if not chamsEnabled then
-        -- Если CHAMS выключены — очищаем всё
-        for _, pl in pairs(game.Players:GetPlayers()) do
-            if pl ~= player and pl.Character then
-                clearChams(pl.Character)
-            end
-        end
-        return
-    end
-    
-    -- Включаем CHAMS
-    for _, pl in pairs(game.Players:GetPlayers()) do
-        if pl ~= player and pl.Character then
-            clearChams(pl.Character) -- Очищаем перед наложением
-            applyChams(pl.Character)
-        end
-    end
-end
-
--- ТОГГЛ CHAMS
 local chamsToggle = FuncTab:CreateToggle({
     Name = "CHAMS (Командные цвета)",
     CurrentValue = false,
     Flag = "chams_toggle",
     Callback = function(value)
-        chamsEnabled = value
-        toggles.chams = value
         if value then
-            -- Подписываемся на новых игроков
+            local function applyChams(character)
+                if character and character ~= player.Character then
+                    -- Определяем, враг или союзник
+                    local isEnemy = true
+                    local pl = game.Players:GetPlayerFromCharacter(character)
+                    if pl and pl.Team == player.Team and pl.Team ~= nil then
+                        isEnemy = false
+                    end
+                    
+                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
+                    
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") and not part:FindFirstChild("Highlight") then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Parent = part
+                            highlight.Adornee = part
+                            highlight.FillColor = color
+                            highlight.FillTransparency = chamsSettings.Transparency
+                            highlight.OutlineColor = color
+                            highlight.OutlineTransparency = 0.2
+                            part:SetAttribute("highlighted", true)
+                        end
+                    end
+                end
+            end
+
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    applyChams(pl.Character)
+                end
+            end
+
             chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function(character)
                     task.wait(0.5)
                     applyChams(character)
                 end)
             end)
+
             for _, pl in pairs(game.Players:GetPlayers()) do
                 if pl ~= player then
                     pl.CharacterAdded:Connect(function(character)
@@ -786,13 +671,24 @@ local chamsToggle = FuncTab:CreateToggle({
                     end)
                 end
             end
+
         else
             if chamsConnection then
                 chamsConnection:Disconnect()
                 chamsConnection = nil
             end
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    for _, part in pairs(pl.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                            local highlight = part:FindFirstChild("Highlight")
+                            if highlight then highlight:Destroy() end
+                            part:SetAttribute("highlighted", nil)
+                        end
+                    end
+                end
+            end
         end
-        updateAllChams()
     end
 })
 
@@ -802,7 +698,26 @@ local enemyColorPicker = FuncTab:CreateColorPicker({
     Color = chamsSettings.EnemyColor,
     Callback = function(Color)
         chamsSettings.EnemyColor = Color
-        if chamsEnabled then updateAllChams() end
+        if chamsToggle.CurrentValue then
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    local isEnemy = true
+                    if pl.Team == player.Team and pl.Team ~= nil then
+                        isEnemy = false
+                    end
+                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
+                    for _, part in pairs(pl.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                            local highlight = part:FindFirstChild("Highlight")
+                            if highlight then
+                                highlight.FillColor = color
+                                highlight.OutlineColor = color
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
 })
 
@@ -812,11 +727,29 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     Color = chamsSettings.TeamColor,
     Callback = function(Color)
         chamsSettings.TeamColor = Color
-        if chamsEnabled then updateAllChams() end
+        if chamsToggle.CurrentValue then
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    local isEnemy = true
+                    if pl.Team == player.Team and pl.Team ~= nil then
+                        isEnemy = false
+                    end
+                    local color = isEnemy and chamsSettings.EnemyColor or chamsSettings.TeamColor
+                    for _, part in pairs(pl.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                            local highlight = part:FindFirstChild("Highlight")
+                            if highlight then
+                                highlight.FillColor = color
+                                highlight.OutlineColor = color
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
 })
 
--- ПРОЗРАЧНОСТЬ CHAMS
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -825,13 +758,23 @@ local transparencySlider = FuncTab:CreateSlider({
     Flag = "chams_transparency",
     Callback = function(value)
         chamsSettings.Transparency = value
-        if chamsEnabled then updateAllChams() end
+        if chamsToggle.CurrentValue then
+            for _, pl in pairs(game.Players:GetPlayers()) do
+                if pl ~= player and pl.Character then
+                    for _, part in pairs(pl.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part:GetAttribute("highlighted") then
+                            local highlight = part:FindFirstChild("Highlight")
+                            if highlight then
+                                highlight.FillTransparency = value
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
 })
 
--- ============================================
--- AIMBOT
--- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
 local selectedViewPlayer = nil
@@ -881,7 +824,6 @@ local aimbot = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "Aimbot",
     Callback = function(Value)
-        toggles.aimbot = Value
         aimbotEnabled = Value
         fovCircle.Visible = Value
     end
@@ -925,7 +867,6 @@ local fovvisibility = FuncTab:CreateToggle({
     CurrentValue = true,
     Flag = "FovVisibility",
     Callback = function(Value)
-        toggles.fovvisibility = Value
         fovCircle.Visible = Value
     end
 })
@@ -947,7 +888,6 @@ local wallcheck = FuncTab:CreateToggle({
     CurrentValue = true,
     Flag = "WallCheck",
     Callback = function(Value)
-        toggles.wallcheck = Value
         wallCheck = Value
     end
 })
@@ -957,7 +897,6 @@ local stickyaim = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "StickyAim",
     Callback = function(Value)
-        toggles.stickyaim = Value
         stickyAimEnabled = Value
     end
 })
@@ -967,7 +906,6 @@ local teamchecktoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "TeamCheck",
     Callback = function(Value)
-        toggles.teamcheck = Value
         teamCheck = Value
     end
 })
@@ -977,7 +915,6 @@ local healthchecktoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "HealthCheck",
     Callback = function(Value)
-        toggles.healthcheck = Value
         healthCheck = Value
     end
 })
@@ -1015,7 +952,6 @@ local circlerainbow = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "RainbowFov",
     Callback = function(Value)
-        toggles.circlerainbow = Value
         rainbowFov = Value
     end
 })
@@ -1027,7 +963,6 @@ local antiaimtoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "AntiAim",
     Callback = function(Value)
-        toggles.antiaim = Value
         antiAim = Value
         if Value then
             Rayfield:Notify({Title = "Anti-Aim", Content = "Enabled!", Duration = 1, Image = 4483362458,})
@@ -1104,7 +1039,6 @@ local spinbottoggle = FuncTab:CreateToggle({
     CurrentValue = false,
     Flag = "SpinBot",
     Callback = function(Value)
-        toggles.spinbot = Value
         spinBot = Value
         if Value then
             for i,v in pairs(hrp:GetChildren()) do
@@ -1178,7 +1112,7 @@ loadstring(game:HttpGet("https://pastebin.com/raw/sAVghM5x"))()
    end,
 })
 
--- Other Scripts
+-- НОВАЯ ВКЛАДКА "Other Scripts"
 local OtherScriptsTab = Window:CreateTab("Other Scripts", "file-code-2")
 local OtherSection = OtherScriptsTab:CreateSection("Other Scripts")
 
@@ -1250,12 +1184,12 @@ loadstring(game:HttpGet("https://pastebin.com/raw/gvUFpwQw"))()
 })
 
 local Slider = OtherTab:CreateSlider({
-   Name = "Stretched Resolution",
+   Name = "Stretched Resolution (растег экрана)",
    Range = {0.01, 1.00},
    Increment = 0.01,
    Suffix = "Resolution",
    CurrentValue = 1.00,
-   Flag = "slidersr",
+   Flag = "slidersr", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
         getgenv().Resolution = {
     [".gg/scripters"] = (Value)
@@ -1288,7 +1222,7 @@ loadstring(game:HttpGet('https://pastefy.app/S7xNJSXX/raw'))()execute("Script14"
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "Big Jump Button",
+   Name = "Big Jump Button (works on mobile, tablet have errors)",
    Callback = function()
 loadstring(game:HttpGet("https://pastebin.com/raw/p3TfEqQ2"))()
    end,
@@ -1299,7 +1233,6 @@ local Toggle = OtherTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_antiafk",
 	Callback=function(state)
-		toggles.antiafk = state
 		for i,v in pairs(getconnections(player.Idled)) do
 			if state then v:Disable() end
 			if not state then v:Enable() end
@@ -1308,7 +1241,7 @@ local Toggle = OtherTab:CreateToggle({
 })
 
 local Button = OtherTab:CreateButton({
-   Name = "B tools",
+   Name = "B tools (visual lol)",
    Callback = function()
 loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/BTools.txt"))()
    end,
@@ -1343,7 +1276,6 @@ local Toggle = OtherTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_autoez",
 	Callback = function(state)
-		toggles.autoez = state
 		autoez=state
 		while autoez and wait(10) do
 			local num=math.random(1, 6)
@@ -1360,7 +1292,7 @@ local Toggle = OtherTab:CreateToggle({
 			elseif num==6 then
 				text='ezzzzz win by antioder hub'
 			end
-			if game.PlaceId==286090429 then
+			if game.PlaceId==286090429 then -- If arsenal
 				local args = {
 				    [1] = "Hah!",
 				    [2] = text,
@@ -1490,7 +1422,7 @@ local Slider = CameraTab:CreateSlider({
    Increment = 1,
    Suffix = "field of view",
    CurrentValue = 70,
-   Flag = "sliderfov",
+   Flag = "sliderfov", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(value)
         tweenService:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), { FieldOfView = value }):Play()
    end,
@@ -1504,7 +1436,6 @@ local Toggle = VisualTab:CreateToggle({
 	CurrentValue = false,
 	Flag = "universal_pink_glasses",
 	Callback=function(state)
-		toggles.pinkglasses = state
 		if state then
 			game.Lighting.Ambient=Color3.fromRGB(225, 20, 147)
 			game.Lighting.OutdoorAmbient=Color3.fromRGB(225, 20, 147)
@@ -1519,8 +1450,7 @@ local Toggle = VisualTab:CreateToggle({
 	Name = "Remove Fog",
 	CurrentValue = false,
 	Flag = "universal_remove_fog",
-	Callback=function(state)
-		toggles.removefog = state
+	Callback = function(state)
 		if state then
 			game.Lighting.FogStart=9e9
 		else
@@ -1533,8 +1463,7 @@ local Toggle = VisualTab:CreateToggle({
 	Name = "Full Brightness",
 	CurrentValue = false,
 	Flag = "universal_full_brightness",
-	Callback=function(state)
-		toggles.fullbrightness = state
+	Callback = function(state)
 		if state then
 			game.Lighting.Brightness=2
 			game.Lighting.ClockTime=14
@@ -1632,27 +1561,12 @@ local SettingsTab = Window:CreateTab("Settings", "settings")
 
 local SettingsSection = SettingsTab:CreateSection("Управление")
 
--- FPS СЧЕТЧИК
-local fpsToggle = SettingsTab:CreateToggle({
-    Name = "Показать FPS",
-    CurrentValue = false,
-    Flag = "fps_counter",
-    Callback = function(value)
-        toggleFPS(value)
-    end
-})
-
 -- КНОПКА ОТКЛЮЧЕНИЯ ВСЕГО
 local disableAllButton = SettingsTab:CreateButton({
     Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
     Callback = function()
-        for key, value in pairs(toggles) do
-            toggles[key] = false
-        end
-        
         Sense.Unload()
         
-        chamsEnabled = false
         if chamsConnection then
             chamsConnection:Disconnect()
             chamsConnection = nil
@@ -1701,7 +1615,6 @@ local disableAllButton = SettingsTab:CreateButton({
         end
         
         autoez = false
-        toggleFPS(false)
         
         Rayfield:Notify({
             Title = "❌ Всё отключено!",
@@ -1719,3 +1632,8 @@ local restartButton = SettingsTab:CreateButton({
             Title = "🔄 Перезагрузка...",
             Content = "Скрипт будет перезагружен",
             Duration = 2,
+        })
+        task.wait(1)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
+    end
+})
