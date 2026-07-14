@@ -210,83 +210,147 @@ fovCircle.Visible = false
 
 local currentTarget = nil
 
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ
-local toggles = {
-    esp = false,
-    boxfill = false,
-    name = false,
-    distance = false,
-    noclip = false,
-    chams = false,
-    aimbot = false,
-    fovvisibility = false,
-    wallcheck = false,
-    stickyaim = false,
-    teamcheck = false,
-    healthcheck = false,
-    circlerainbow = false,
-    antiaim = false,
-    spinbot = false,
-    pinkglasses = false,
-    removefog = false,
-    fullbrightness = false,
-    autoez = false,
-    antiafk = false,
-    fpscounter = false
-}
+-- ============================================
+-- HITMARKER + SOUND
+-- ============================================
+local hitmarkerEnabled = true
+local hitmarkerSound = nil
+local hitmarkerLines = {}
 
--- FPS СЧЕТЧИК
-local fpsLabel = nil
-local fpsConnection = nil
+-- СОЗДАЁМ ХИТМАРКЕР
+local function createHitmarker()
+    -- Удаляем старый хитмаркер
+    for _, line in pairs(hitmarkerLines) do
+        line:Remove()
+    end
+    hitmarkerLines = {}
+    
+    -- Создаём 4 линии (крестик)
+    local size = 15
+    local thickness = 3
+    local centerX = camera.ViewportSize.X / 2
+    local centerY = camera.ViewportSize.Y / 2
+    
+    -- Верхняя-левая
+    local line1 = Drawing.new("Line")
+    line1.Visible = false
+    line1.Color = Color3.fromRGB(255, 255, 255)
+    line1.Thickness = thickness
+    line1.From = Vector2.new(centerX - size, centerY - size)
+    line1.To = Vector2.new(centerX - size/3, centerY - size/3)
+    
+    -- Верхняя-правая
+    local line2 = Drawing.new("Line")
+    line2.Visible = false
+    line2.Color = Color3.fromRGB(255, 255, 255)
+    line2.Thickness = thickness
+    line2.From = Vector2.new(centerX + size, centerY - size)
+    line2.To = Vector2.new(centerX + size/3, centerY - size/3)
+    
+    -- Нижняя-левая
+    local line3 = Drawing.new("Line")
+    line3.Visible = false
+    line3.Color = Color3.fromRGB(255, 255, 255)
+    line3.Thickness = thickness
+    line3.From = Vector2.new(centerX - size, centerY + size)
+    line3.To = Vector2.new(centerX - size/3, centerY + size/3)
+    
+    -- Нижняя-правая
+    local line4 = Drawing.new("Line")
+    line4.Visible = false
+    line4.Color = Color3.fromRGB(255, 255, 255)
+    line4.Thickness = thickness
+    line4.From = Vector2.new(centerX + size, centerY + size)
+    line4.To = Vector2.new(centerX + size/3, centerY + size/3)
+    
+    hitmarkerLines = {line1, line2, line3, line4}
+end
 
-local function toggleFPS(value)
-    toggles.fpscounter = value
-    if value then
-        if not fpsLabel then
-            fpsLabel = Drawing.new("Text")
-            fpsLabel.Visible = true
-            fpsLabel.Color = Color3.fromRGB(0, 255, 0)
-            fpsLabel.Size = 18
-            fpsLabel.Center = false
-            fpsLabel.Outline = true
-            fpsLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
-            fpsLabel.Position = Vector2.new(10, 10)
-            fpsLabel.Text = "FPS: 0"
+-- ПОКАЗАТЬ ХИТМАРКЕР
+local function showHitmarker()
+    if not hitmarkerEnabled then return end
+    
+    for _, line in pairs(hitmarkerLines) do
+        line.Visible = true
+    end
+    
+    -- Скрываем через 0.3 секунды
+    task.spawn(function()
+        task.wait(0.3)
+        for _, line in pairs(hitmarkerLines) do
+            line.Visible = false
         end
-        
-        local lastTime = tick()
-        local frameCount = 0
-        
-        fpsConnection = RunService.RenderStepped:Connect(function()
-            frameCount = frameCount + 1
-            local currentTime = tick()
-            if currentTime - lastTime >= 1 then
-                local fps = math.floor(frameCount / (currentTime - lastTime))
-                fpsLabel.Text = "FPS: " .. tostring(fps)
-                frameCount = 0
-                lastTime = currentTime
-                
-                if fps >= 60 then
-                    fpsLabel.Color = Color3.fromRGB(0, 255, 0)
-                elseif fps >= 30 then
-                    fpsLabel.Color = Color3.fromRGB(255, 255, 0)
-                else
-                    fpsLabel.Color = Color3.fromRGB(255, 0, 0)
+    end)
+end
+
+-- ВОСПРОИЗВЕСТИ ЗВУК
+local function playHitSound()
+    if not hitmarkerEnabled then return end
+    
+    -- Создаём звук, если его нет
+    if not hitmarkerSound then
+        hitmarkerSound = Instance.new("Sound")
+        hitmarkerSound.Parent = game.Workspace
+        hitmarkerSound.Volume = 0.5
+        hitmarkerSound.SoundId = "rbxassetid://138164109" -- Короткий бип
+    end
+    
+    hitmarkerSound:Play()
+end
+
+-- ОТСЛЕЖИВАНИЕ ПОПАДАНИЙ (ЧЕРЕЗ ДАМАГ)
+local function setupHitDetection()
+    -- Следим за изменениями здоровья у игроков
+    for _, pl in pairs(game.Players:GetPlayers()) do
+        if pl ~= player then
+            local character = pl.Character
+            if character then
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    local lastHealth = humanoid.Health
+                    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                        local newHealth = humanoid.Health
+                        if newHealth < lastHealth then
+                            -- Кто-то получил урон
+                            showHitmarker()
+                            playHitSound()
+                        end
+                        lastHealth = newHealth
+                    end)
                 end
             end
-        end)
-    else
-        if fpsConnection then
-            fpsConnection:Disconnect()
-            fpsConnection = nil
-        end
-        if fpsLabel then
-            fpsLabel.Visible = false
-            fpsLabel:Remove()
-            fpsLabel = nil
         end
     end
+    
+    -- Следим за новыми игроками
+    game.Players.PlayerAdded:Connect(function(pl)
+        if pl ~= player then
+            pl.CharacterAdded:Connect(function(character)
+                task.wait(1)
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    local lastHealth = humanoid.Health
+                    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                        local newHealth = humanoid.Health
+                        if newHealth < lastHealth then
+                            showHitmarker()
+                            playHitSound()
+                        end
+                        lastHealth = newHealth
+                    end)
+                end
+            end)
+        end
+    end)
 end
+
+-- СОЗДАЁМ ХИТМАРКЕР ПРИ ЗАПУСКЕ
+createHitmarker()
+setupHitDetection()
+
+-- ============================================
+-- ОСТАЛЬНОЙ КОД (AIMBOT, CHAMS, ESP И Т.Д.)
+-- ============================================
 
 local function checkTeam(player)
     if teamCheck and player.Team == plr.Team then
@@ -689,7 +753,7 @@ local Toggle = FuncTab:CreateToggle({
 })
 
 -- ============================================
--- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ БЕЗ ВЫДЕЛЕНИЯ)
+-- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ)
 -- ============================================
 local chamsConnection = nil
 local chamsEnabled = false
@@ -744,7 +808,6 @@ end
 -- ОБНОВЛЕНИЕ ВСЕХ CHAMS
 local function updateAllChams()
     if not chamsEnabled then
-        -- Если CHAMS выключены — очищаем всё
         for _, pl in pairs(game.Players:GetPlayers()) do
             if pl ~= player and pl.Character then
                 clearChams(pl.Character)
@@ -753,10 +816,9 @@ local function updateAllChams()
         return
     end
     
-    -- Включаем CHAMS
     for _, pl in pairs(game.Players:GetPlayers()) do
         if pl ~= player and pl.Character then
-            clearChams(pl.Character) -- Очищаем перед наложением
+            clearChams(pl.Character)
             applyChams(pl.Character)
         end
     end
@@ -771,7 +833,6 @@ local chamsToggle = FuncTab:CreateToggle({
         chamsEnabled = value
         toggles.chams = value
         if value then
-            -- Подписываемся на новых игроков
             chamsConnection = game.Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function(character)
                     task.wait(0.5)
@@ -1623,6 +1684,28 @@ local Button = SexTab:CreateButton({
    Callback = function()
 loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
    end,
+})
+
+-- ============================================
+-- ВКЛАДКА HITMARKER
+-- ============================================
+local HitmarkerTab = Window:CreateTab("Hitmarker", "target")
+
+local HitmarkerSection = HitmarkerTab:CreateSection("Настройки Hitmarker")
+
+local hitmarkerToggle = HitmarkerTab:CreateToggle({
+    Name = "Включить Hitmarker + Sound",
+    CurrentValue = true,
+    Flag = "hitmarker_enabled",
+    Callback = function(value)
+        hitmarkerEnabled = value
+        if not value then
+            -- Скрываем хитмаркер
+            for _, line in pairs(hitmarkerLines) do
+                line.Visible = false
+            end
+        end
+    end
 })
 
 -- ============================================
