@@ -210,233 +210,119 @@ fovCircle.Visible = false
 
 local currentTarget = nil
 
+-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТОГГЛОВ
+local toggles = {
+    esp = false,
+    boxfill = false,
+    name = false,
+    distance = false,
+    noclip = false,
+    chams = false,
+    aimbot = false,
+    fovvisibility = false,
+    wallcheck = false,
+    stickyaim = false,
+    teamcheck = false,
+    healthcheck = false,
+    circlerainbow = false,
+    antiaim = false,
+    spinbot = false,
+    pinkglasses = false,
+    removefog = false,
+    fullbrightness = false,
+    autoez = false,
+    antiafk = false,
+    fpscounter = false,
+    hitmarker = true
+}
+
 -- ============================================
--- HITMARKER + DAMAGE INDICATOR
+-- ПРОСТОЙ HITMARKER (без багов)
 -- ============================================
 local hitmarkerEnabled = true
-local hitmarkerStyle = "Классический"
-local damageIndicatorEnabled = true
 local hitmarkerSound = nil
-local hitmarkerObjects = {}
-local damageLabels = {}
+local hitmarkerLines = {}
 
--- ВИДЫ ХИТМАРКЕРА
-local function createHitmarker(style)
-    -- Удаляем старые
-    for _, obj in pairs(hitmarkerObjects) do
-        obj:Remove()
+-- Создаём хитмаркер
+local function createHitmarker()
+    for _, line in pairs(hitmarkerLines) do
+        line:Remove()
     end
-    hitmarkerObjects = {}
+    hitmarkerLines = {}
     
+    local size = 15
+    local thickness = 2
     local centerX = camera.ViewportSize.X / 2
     local centerY = camera.ViewportSize.Y / 2
-    local size = 15
-    local thickness = 3
     
-    if style == "Классический" then
-        -- Крестик (4 линии)
-        local line1 = Drawing.new("Line")
-        line1.Color = Color3.fromRGB(255, 255, 255)
-        line1.Thickness = thickness
-        line1.Visible = false
-        line1.From = Vector2.new(centerX - size, centerY - size)
-        line1.To = Vector2.new(centerX - size/3, centerY - size/3)
-        table.insert(hitmarkerObjects, line1)
-        
-        local line2 = Drawing.new("Line")
-        line2.Color = Color3.fromRGB(255, 255, 255)
-        line2.Thickness = thickness
-        line2.Visible = false
-        line2.From = Vector2.new(centerX + size, centerY - size)
-        line2.To = Vector2.new(centerX + size/3, centerY - size/3)
-        table.insert(hitmarkerObjects, line2)
-        
-        local line3 = Drawing.new("Line")
-        line3.Color = Color3.fromRGB(255, 255, 255)
-        line3.Thickness = thickness
-        line3.Visible = false
-        line3.From = Vector2.new(centerX - size, centerY + size)
-        line3.To = Vector2.new(centerX - size/3, centerY + size/3)
-        table.insert(hitmarkerObjects, line3)
-        
-        local line4 = Drawing.new("Line")
-        line4.Color = Color3.fromRGB(255, 255, 255)
-        line4.Thickness = thickness
-        line4.Visible = false
-        line4.From = Vector2.new(centerX + size, centerY + size)
-        line4.To = Vector2.new(centerX + size/3, centerY + size/3)
-        table.insert(hitmarkerObjects, line4)
-        
-    elseif style == "Точка" then
-        -- Одна большая точка
-        local dot = Drawing.new("Circle")
-        dot.Color = Color3.fromRGB(255, 255, 255)
-        dot.Radius = 8
-        dot.Filled = true
-        dot.Visible = false
-        dot.Position = Vector2.new(centerX, centerY)
-        table.insert(hitmarkerObjects, dot)
-        
-    elseif style == "Круг" then
-        -- Круг с точкой внутри
-        local circle = Drawing.new("Circle")
-        circle.Color = Color3.fromRGB(255, 255, 255)
-        circle.Radius = 15
-        circle.Filled = false
-        circle.Thickness = 3
-        circle.Visible = false
-        circle.Position = Vector2.new(centerX, centerY)
-        table.insert(hitmarkerObjects, circle)
-        
-        local dot = Drawing.new("Circle")
-        dot.Color = Color3.fromRGB(255, 255, 255)
-        dot.Radius = 3
-        dot.Filled = true
-        dot.Visible = false
-        dot.Position = Vector2.new(centerX, centerY)
-        table.insert(hitmarkerObjects, dot)
-        
-    elseif style == "Снайперский" then
-        -- Тонкий крест с точкой
-        local lineV = Drawing.new("Line")
-        lineV.Color = Color3.fromRGB(255, 255, 255)
-        lineV.Thickness = 1
-        lineV.Visible = false
-        lineV.From = Vector2.new(centerX, centerY - 30)
-        lineV.To = Vector2.new(centerX, centerY + 30)
-        table.insert(hitmarkerObjects, lineV)
-        
-        local lineH = Drawing.new("Line")
-        lineH.Color = Color3.fromRGB(255, 255, 255)
-        lineH.Thickness = 1
-        lineH.Visible = false
-        lineH.From = Vector2.new(centerX - 30, centerY)
-        lineH.To = Vector2.new(centerX + 30, centerY)
-        table.insert(hitmarkerObjects, lineH)
-        
-        local dot = Drawing.new("Circle")
-        dot.Color = Color3.fromRGB(255, 0, 0)
-        dot.Radius = 2
-        dot.Filled = true
-        dot.Visible = false
-        dot.Position = Vector2.new(centerX, centerY)
-        table.insert(hitmarkerObjects, dot)
+    -- 4 линии крестика
+    for i = 1, 4 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Color = Color3.fromRGB(255, 255, 255)
+        line.Thickness = thickness
+        table.insert(hitmarkerLines, line)
     end
+    
+    -- Настройка позиций
+    hitmarkerLines[1].From = Vector2.new(centerX - size, centerY - size)
+    hitmarkerLines[1].To = Vector2.new(centerX - size/3, centerY - size/3)
+    
+    hitmarkerLines[2].From = Vector2.new(centerX + size, centerY - size)
+    hitmarkerLines[2].To = Vector2.new(centerX + size/3, centerY - size/3)
+    
+    hitmarkerLines[3].From = Vector2.new(centerX - size, centerY + size)
+    hitmarkerLines[3].To = Vector2.new(centerX - size/3, centerY + size/3)
+    
+    hitmarkerLines[4].From = Vector2.new(centerX + size, centerY + size)
+    hitmarkerLines[4].To = Vector2.new(centerX + size/3, centerY + size/3)
 end
 
--- ПОКАЗАТЬ ХИТМАРКЕР С АНИМАЦИЕЙ
+-- Показать хитмаркер
 local function showHitmarker()
     if not hitmarkerEnabled then return end
     
-    for _, obj in pairs(hitmarkerObjects) do
-        obj.Visible = true
-        -- Анимация: масштабирование (через изменение размера)
-        if obj:IsA("Circle") and obj.Filled then
-            -- Точка увеличивается
-            task.spawn(function()
-                for i = 1, 5 do
-                    obj.Radius = 3 + i * 2
-                    task.wait(0.01)
-                end
-                task.wait(0.1)
-                for i = 5, 1, -1 do
-                    obj.Radius = 3 + i * 2
-                    task.wait(0.01)
-                end
-                obj.Visible = false
-            end)
-        else
-            task.wait(0.3)
-            for _, o in pairs(hitmarkerObjects) do
-                o.Visible = false
-            end
-        end
-    end
-end
-
--- ПОКАЗАТЬ УРОН НАД ИГРОКОМ
-local function showDamage(player, damage)
-    if not damageIndicatorEnabled or not player or not player.Character then return end
-    
-    local head = player.Character:FindFirstChild("Head")
-    if not head then return end
-    
-    -- Создаём текст над головой
-    local text = Drawing.new("Text")
-    text.Size = 24
-    text.Center = true
-    text.Outline = true
-    text.OutlineColor = Color3.fromRGB(0, 0, 0)
-    text.Text = "-" .. tostring(damage)
-    
-    -- Цвет в зависимости от урона
-    if damage >= 50 then
-        text.Color = Color3.fromRGB(255, 0, 0) -- Красный
-    elseif damage >= 30 then
-        text.Color = Color3.fromRGB(255, 200, 0) -- Оранжевый
-    else
-        text.Color = Color3.fromRGB(255, 255, 255) -- Белый
+    for _, line in pairs(hitmarkerLines) do
+        line.Visible = true
     end
     
-    -- Анимация: поднимается вверх и исчезает
     task.spawn(function()
-        local startPos = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
-        text.Position = Vector2.new(startPos.X, startPos.Y)
-        text.Visible = true
-        
-        for i = 1, 30 do
-            local currentPos = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2 + i * 0.15, 0))
-            text.Position = Vector2.new(currentPos.X, currentPos.Y)
-            text.Transparency = 1 - (i / 30)
-            task.wait(0.02)
+        task.wait(0.2)
+        for _, line in pairs(hitmarkerLines) do
+            line.Visible = false
         end
-        
-        text.Visible = false
-        text:Remove()
     end)
 end
 
--- СОЗДАЁМ ХИТМАРКЕР ПРИ ЗАПУСКЕ
-createHitmarker(hitmarkerStyle)
-
--- ОТСЛЕЖИВАНИЕ УРОНА
-local function setupDamageDetection()
-    -- Следим за изменениями здоровья
-    local function onHealthChanged(pl, humanoid, oldHealth)
-        if not pl or pl == player then return end
-        if not humanoid then return end
-        
-        local newHealth = humanoid.Health
-        local damage = oldHealth - newHealth
-        
-        if damage > 0 and damage < 999 then -- Реальный урон
-            showHitmarker()
-            showDamage(pl, math.floor(damage))
-            
-            -- Звук
-            if hitmarkerEnabled then
-                if not hitmarkerSound then
-                    hitmarkerSound = Instance.new("Sound")
-                    hitmarkerSound.Parent = game.Workspace
-                    hitmarkerSound.Volume = 0.5
-                    hitmarkerSound.SoundId = "rbxassetid://138164109"
-                end
-                hitmarkerSound:Play()
-            end
-        end
+-- Звук
+local function playHitSound()
+    if not hitmarkerEnabled then return end
+    if not hitmarkerSound then
+        hitmarkerSound = Instance.new("Sound")
+        hitmarkerSound.Parent = game.Workspace
+        hitmarkerSound.Volume = 0.3
+        hitmarkerSound.SoundId = "rbxassetid://138164109"
     end
-    
+    hitmarkerSound:Play()
+end
+
+-- Создаём при запуске
+createHitmarker()
+
+-- ОТСЛЕЖИВАНИЕ УРОНА (ПРОСТОЙ СПОСОБ)
+local function setupHitDetection()
     for _, pl in pairs(game.Players:GetPlayers()) do
         if pl ~= player then
             pl.CharacterAdded:Connect(function(character)
-                task.wait(1)
+                task.wait(0.5)
                 local humanoid = character:FindFirstChild("Humanoid")
                 if humanoid then
                     local lastHealth = humanoid.Health
                     humanoid:GetPropertyChangedSignal("Health"):Connect(function()
                         local newHealth = humanoid.Health
-                        if newHealth ~= lastHealth then
-                            onHealthChanged(pl, humanoid, lastHealth)
+                        if newHealth < lastHealth and newHealth > 0 then
+                            showHitmarker()
+                            playHitSound()
                         end
                         lastHealth = newHealth
                     end)
@@ -444,32 +330,62 @@ local function setupDamageDetection()
             end)
         end
     end
-    
-    game.Players.PlayerAdded:Connect(function(pl)
-        if pl ~= player then
-            pl.CharacterAdded:Connect(function(character)
-                task.wait(1)
-                local humanoid = character:FindFirstChild("Humanoid")
-                if humanoid then
-                    local lastHealth = humanoid.Health
-                    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                        local newHealth = humanoid.Health
-                        if newHealth ~= lastHealth then
-                            onHealthChanged(pl, humanoid, lastHealth)
-                        end
-                        lastHealth = newHealth
-                    end)
-                end
-            end)
-        end
-    end)
 end
 
-setupDamageDetection()
+setupHitDetection()
 
--- ============================================
--- ОСТАЛЬНОЙ КОД (AIMBOT, CHAMS, ESP И Т.Д.)
--- ============================================
+-- FPS СЧЕТЧИК
+local fpsLabel = nil
+local fpsConnection = nil
+
+local function toggleFPS(value)
+    toggles.fpscounter = value
+    if value then
+        if not fpsLabel then
+            fpsLabel = Drawing.new("Text")
+            fpsLabel.Visible = true
+            fpsLabel.Color = Color3.fromRGB(0, 255, 0)
+            fpsLabel.Size = 18
+            fpsLabel.Center = false
+            fpsLabel.Outline = true
+            fpsLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
+            fpsLabel.Position = Vector2.new(10, 10)
+            fpsLabel.Text = "FPS: 0"
+        end
+        
+        local lastTime = tick()
+        local frameCount = 0
+        
+        fpsConnection = RunService.RenderStepped:Connect(function()
+            frameCount = frameCount + 1
+            local currentTime = tick()
+            if currentTime - lastTime >= 1 then
+                local fps = math.floor(frameCount / (currentTime - lastTime))
+                fpsLabel.Text = "FPS: " .. tostring(fps)
+                frameCount = 0
+                lastTime = currentTime
+                
+                if fps >= 60 then
+                    fpsLabel.Color = Color3.fromRGB(0, 255, 0)
+                elseif fps >= 30 then
+                    fpsLabel.Color = Color3.fromRGB(255, 255, 0)
+                else
+                    fpsLabel.Color = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end)
+    else
+        if fpsConnection then
+            fpsConnection:Disconnect()
+            fpsConnection = nil
+        end
+        if fpsLabel then
+            fpsLabel.Visible = false
+            fpsLabel:Remove()
+            fpsLabel = nil
+        end
+    end
+end
 
 local function checkTeam(player)
     if teamCheck and player.Team == plr.Team then
@@ -871,20 +787,16 @@ local Toggle = FuncTab:CreateToggle({
 	end,
 })
 
--- ============================================
--- CHAMS (СТАБИЛЬНАЯ ВЕРСИЯ)
--- ============================================
+-- CHAMS
 local chamsConnection = nil
 local chamsEnabled = false
 
--- НАСТРОЙКИ CHAMS
 local chamsSettings = {
     EnemyColor = Color3.fromRGB(255, 0, 0),
     TeamColor = Color3.fromRGB(0, 0, 255),
     Transparency = 0.5
 }
 
--- ПРИМЕНЕНИЕ CHAMS
 local function applyChams(character)
     if not character or character == player.Character or not chamsEnabled then return end
     
@@ -912,7 +824,6 @@ local function applyChams(character)
     end
 end
 
--- ОЧИСТКА CHAMS
 local function clearChams(character)
     if not character then return end
     for _, part in pairs(character:GetDescendants()) do
@@ -924,7 +835,6 @@ local function clearChams(character)
     end
 end
 
--- ОБНОВЛЕНИЕ ВСЕХ CHAMS
 local function updateAllChams()
     if not chamsEnabled then
         for _, pl in pairs(game.Players:GetPlayers()) do
@@ -943,7 +853,6 @@ local function updateAllChams()
     end
 end
 
--- ТОГГЛ CHAMS
 local chamsToggle = FuncTab:CreateToggle({
     Name = "CHAMS (Командные цвета)",
     CurrentValue = false,
@@ -965,7 +874,8 @@ local chamsToggle = FuncTab:CreateToggle({
                         applyChams(character)
                     end)
                 end
-            end        else
+            end
+        else
             if chamsConnection then
                 chamsConnection:Disconnect()
                 chamsConnection = nil
@@ -975,7 +885,6 @@ local chamsToggle = FuncTab:CreateToggle({
     end
 })
 
--- НАСТРОЙКА ЦВЕТА ВРАГОВ
 local enemyColorPicker = FuncTab:CreateColorPicker({
     Name = "Цвет врагов (CHAMS)",
     Color = chamsSettings.EnemyColor,
@@ -985,7 +894,6 @@ local enemyColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
--- НАСТРОЙКА ЦВЕТА СОЮЗНИКОВ
 local teamColorPicker = FuncTab:CreateColorPicker({
     Name = "Цвет союзников (CHAMS)",
     Color = chamsSettings.TeamColor,
@@ -995,7 +903,6 @@ local teamColorPicker = FuncTab:CreateColorPicker({
     end
 })
 
--- ПРОЗРАЧНОСТЬ CHAMS
 local transparencySlider = FuncTab:CreateSlider({
     Name = "CHAMS Transparency",
     Range = {0, 1},
@@ -1008,9 +915,7 @@ local transparencySlider = FuncTab:CreateSlider({
     end
 })
 
--- ============================================
 -- AIMBOT
--- ============================================
 local FuncccSection = FuncTab:CreateSection("Aimbot")
 local viewEnabled = false
 local selectedViewPlayer = nil
@@ -1809,46 +1714,19 @@ loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
 -- ============================================
 local HitmarkerTab = Window:CreateTab("Hitmarker", "target")
 
-local HitmarkerSection = HitmarkerTab:CreateSection("Настройки Hitmarker")
+local HitmarkerSection = HitmarkerTab:CreateSection("Настройки")
 
--- Включение Hitmarker
 local hitmarkerToggle = HitmarkerTab:CreateToggle({
     Name = "Включить Hitmarker",
     CurrentValue = true,
-    Flag = "hitmarker_enabled",
+    Flag = "hitmarker_toggle",
     Callback = function(value)
         hitmarkerEnabled = value
         if not value then
-            for _, obj in pairs(hitmarkerObjects) do
-                obj.Visible = false
+            for _, line in pairs(hitmarkerLines) do
+                line.Visible = false
             end
         end
-    end
-})
-
--- Виды Hitmarker
-local styleDropdown = HitmarkerTab:CreateDropdown({
-    Name = "Вид Hitmarker",
-    Options = {"Классический", "Точка", "Круг", "Снайперский"},
-    CurrentOption = {"Классический"},
-    Flag = "hitmarker_style",
-    Callback = function(option)
-        if type(option) == "table" then
-            hitmarkerStyle = option[1]
-        else
-            hitmarkerStyle = option
-        end
-        createHitmarker(hitmarkerStyle)
-    end
-})
-
--- Включение урона
-local damageToggle = HitmarkerTab:CreateToggle({
-    Name = "Показывать урон",
-    CurrentValue = true,
-    Flag = "damage_indicator",
-    Callback = function(value)
-        damageIndicatorEnabled = value
     end
 })
 
@@ -1859,7 +1737,6 @@ local SettingsTab = Window:CreateTab("Settings", "settings")
 
 local SettingsSection = SettingsTab:CreateSection("Управление")
 
--- FPS СЧЕТЧИК
 local fpsToggle = SettingsTab:CreateToggle({
     Name = "Показать FPS",
     CurrentValue = false,
@@ -1869,7 +1746,6 @@ local fpsToggle = SettingsTab:CreateToggle({
     end
 })
 
--- КНОПКА ОТКЛЮЧЕНИЯ ВСЕГО
 local disableAllButton = SettingsTab:CreateButton({
     Name = "❌ ОТКЛЮЧИТЬ ВСЁ",
     Callback = function()
@@ -1929,6 +1805,7 @@ local disableAllButton = SettingsTab:CreateButton({
         
         autoez = false
         toggleFPS(false)
+        hitmarkerEnabled = false
         
         Rayfield:Notify({
             Title = "❌ Всё отключено!",
@@ -1938,7 +1815,6 @@ local disableAllButton = SettingsTab:CreateButton({
     end
 })
 
--- Кнопка перезагрузки скрипта
 local restartButton = SettingsTab:CreateButton({
     Name = "🔄 Перезагрузить скрипт",
     Callback = function()
