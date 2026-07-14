@@ -1719,3 +1719,8 @@ local restartButton = SettingsTab:CreateButton({
             Title = "🔄 Перезагрузка...",
             Content = "Скрипт будет перезагружен",
             Duration = 2,
+        })
+        task.wait(1)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/fnnn2cygmy-cyber/HELLOOGIDRAA123/refs/heads/main/HELLOOGIDRAA123"))()
+    end
+})
